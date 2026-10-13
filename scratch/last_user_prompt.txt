@@ -1,0 +1,2023 @@
+<USER_REQUEST>
+CAREEROS — JOB DISCOVERY & FEED ENGINE OVERHAUL
+================================================
+
+The current Job Feed & News system is fundamentally underperforming.
+
+I have attached screenshots showing the current UI and behavior. Analyze the screenshots carefully before changing anything.
+
+DO NOT make superficial UI changes.
+
+The objective is to build a fast, reliable, scalable job-discovery engine that can actually utilize the thousands of enabled sources and present the user with a clean, continuously updated job feed.
+
+Do NOT use paid third-party job aggregation APIs or paid scraping services.
+
+Use our existing infrastructure and build the discovery/normalization/matching system ourselves wherever technically possible.
+
+================================================
+1. CORE PROBLEM
+================================================
+
+The system currently shows things like:
+
+- 1,000+ sources
+- 1,400+ enabled sources
+- 2,000+ jobs in the database
+
+but the Job Feed may show only 50–90 jobs.
+
+This is unacceptable.
+
+The source count must NOT be confused with the number of jobs.
+
+A source is a job endpoint.
+
+The system must actually query active sources, retrieve available jobs, normalize them, deduplicate them, validate them, classify them, and put eligible jobs into the user's feed.
+
+The architecture must be:
+
+SOURCE
+→ FETCH
+→ PARSE
+→ NORMALIZE
+→ VALIDATE
+→ DEDUPLICATE
+→ ENRICH
+→ LOCATION/REMOTE ELIGIBILITY
+→ CAREER PROFILE MATCH
+→ FRESHNESS
+→ FEED INDEX
+→ USER FEED
+
+Do not artificially limit the feed to a small number simply because the discovery operation has completed.
+
+================================================
+2. BUILD A REAL DISCOVERY ENGINE
+================================================
+
+Replace the current "Discovering..." behavior with a real job discovery pipeline.
+
+When the user clicks:
+
+"Discover New Jobs"
+
+the system should:
+
+1. Create a discovery run.
+2. Load all enabled sources.
+3. Split sources into batches.
+4. Process batches concurrently with controlled concurrency.
+5. Query every eligible source.
+6. Record source-level success/failure.
+7. Parse returned jobs.
+8. Normalize jobs into the canonical job schema.
+9. Deduplicate.
+10. Validate remote/location eligibility.
+11. Calculate freshness.
+12. Calculate career-profile relevance.
+13. Insert new jobs.
+14. Update existing jobs if their source data changed.
+15. Update the feed index.
+16. Finish the discovery run with a real summary.
+
+IMPORTANT:
+
+Do NOT create an infinite loading state.
+
+The current UI appears to keep "Discovering..." / "Matching..." for too long.
+
+Every discovery run must have:
+
+- Started at
+- Current status
+- Sources discovered
+- Sources completed
+- Sources failed
+- Jobs fetched
+- Jobs normalized
+- New jobs
+- Existing jobs updated
+- Duplicates removed
+- Jobs rejected
+- Jobs eligible for feed
+- Jobs added to feed
+- Duration
+
+Example:
+
+Discovery complete
+
+1,411 / 1,411 sources checked
+8,426 jobs fetched
+6,932 normalized
+1,184 duplicates removed
+5,748 valid jobs
+1,327 new jobs
+4,421 existing jobs updated
+
+The user should NEVER have to guess whether discovery is actually doing anything.
+
+================================================
+3. SOURCE UTILIZATION
+================================================
+
+If 1,411 sources are enabled, the system should genuinely attempt to process the enabled sources.
+
+Do not query only 5, 10, 50 or another arbitrary subset unless there is a legitimate technical reason.
+
+Implement:
+
+- controlled concurrency
+- request timeouts
+- retry policy
+- exponential backoff
+- per-domain rate limiting
+- connection reuse
+- caching
+- incremental synchronization
+- failure isolation
+
+One broken source must NEVER block the entire discovery process.
+
+Example:
+
+Source 1 fails
+→ mark failed
+→ continue source 2
+
+Do not make the entire discovery run wait for one source.
+
+================================================
+4. INCREMENTAL DISCOVERY
+================================================
+
+Do NOT repeatedly download and process every historical job every time.
+
+Each source should maintain:
+
+- last checked
+- last successful sync
+- last cursor/page/token if supported
+- last known job IDs
+- last content hash
+- last HTTP metadata where useful
+- source health
+- failure count
+
+If the source supports:
+
+- RSS
+- JSON
+- GraphQL
+- API
+- pagination
+- cursor
+- ATS endpoint
+
+use the most efficient mechanism available.
+
+For sources that expose job feeds incrementally, only retrieve new/changed records.
+
+For sources without incremental support, use intelligent polling and caching.
+
+================================================
+5. CANONICAL JOB MODEL
+================================================
+
+Create one canonical job schema regardless of source.
+
+Every job should have:
+
+job_id
+source_id
+source_type
+company_id
+company_name
+company_logo
+title
+normalized_title
+description
+clean_description
+original_description
+official_job_url
+source_url
+location_raw
+locations[]
+remote_type
+remote_scope
+remote_eligibility
+employment_type
+experience_min
+experience_max
+salary_min
+salary_max
+salary_currency
+salary_period
+salary_raw
+salary_verified
+salary_source
+posted_at
+first_seen_at
+last_seen_at
+updated_at
+status
+is_new
+is_viewed
+is_saved
+is_hidden
+is_target_company
+match_score
+match_reasons[]
+skills[]
+department
+seniority
+job_hash
+canonical_hash
+
+Do not lose original source information.
+
+================================================
+6. SALARY DATA MUST BE TRUSTWORTHY
+================================================
+
+This is currently badly handled.
+
+The UI is showing examples such as:
+
+"$1"
+
+That must NEVER happen.
+
+If the employer has not explicitly provided a salary:
+
+Show:
+
+Salary not disclosed
+
+If salary is explicitly provided by the employer:
+
+Show the exact salary.
+
+Examples:
+
+$120,000–$150,000 USD / year
+
+₹15–20 LPA
+
+€70,000–€90,000 EUR / year
+
+If the source contains ambiguous compensation data:
+
+DO NOT convert it into a fake salary.
+
+If salary extraction is uncertain:
+
+salary_verified = false
+
+and display:
+
+Salary not disclosed
+
+Do NOT invent salary values.
+
+Do NOT use estimated salary on the primary job card.
+
+If you want to show an estimate later, create a separate clearly labeled "Estimated market compensation" field, but do not mix it with employer-stated salary.
+
+================================================
+7. JOB DESCRIPTION CLEANING
+================================================
+
+The current job modal is showing raw HTML such as:
+
+<h2>About Supabase</h2>
+<p>...</p>
+
+This looks broken.
+
+Build a proper JD parser/renderer.
+
+The original HTML must remain stored internally.
+
+But the user-facing JD must render as:
+
+About the company
+
+[paragraph]
+
+About the role
+
+[paragraph]
+
+What you'll do
+
+• ...
+• ...
+• ...
+
+What we're looking for
+
+• ...
+• ...
+
+Nice to have
+
+• ...
+
+Benefits
+
+• ...
+
+etc.
+
+Strip:
+
+- raw HTML tags
+- malformed markup
+- tracking code
+- unnecessary inline styles
+- duplicated content
+- broken entities
+
+Preserve:
+
+- headings
+- paragraphs
+- bullet lists
+- links
+- emphasis
+- tables when useful
+
+Never display raw HTML to the user.
+
+================================================
+8. JOB CARD REDESIGN
+================================================
+
+The current cards contain too much noise.
+
+Keep the card clean.
+
+Recommended hierarchy:
+
+[Company logo]
+
+Company name
+Target / Verified Live badges where applicable
+
+JOB TITLE
+
+Location · Remote type
+Experience · Employment type
+
+Salary
+Posted date
+
+Match reasons
+
+Actions
+
+Example:
+
+┌─────────────────────────────────────────┐
+│ [Logo] Supabase                 76%     │
+│        ✓ Target  ✓ Verified Live        │
+│                                         │
+│ Partnerships Manager                    │
+│                                         │
+│ Remote, Global   ·  Worldwide Remote    │
+│ 5+ years         ·  Full-time           │
+│                                         │
+│ $120k–$150k USD / year                  │
+│ Posted 2d ago                           │
+│                                         │
+│ ✓ Target company                        │
+│ ✓ Partnership experience                │
+│ +2 more reasons                         │
+│                                         │
+│ Save       View Job       Apply ↗       │
+└─────────────────────────────────────────┘
+
+Do not overload the card.
+
+================================================
+9. NEW JOB BEHAVIOR
+================================================
+
+This is extremely important.
+
+A new job should have a subtle:
+
+NEW
+
+indicator.
+
+Do NOT over-highlight it.
+
+Recommended:
+
+small green/blue outlined badge near the job title.
+
+Example:
+
+[NEW] Enterprise Business Development Manager
+
+Once the user interacts with the job, NEW must disappear.
+
+Mark as viewed when ANY of the following happens:
+
+1. User opens the job.
+2. User keeps the job detail modal open for a meaningful duration.
+3. User scrolls through the job detail.
+4. User reaches meaningful content in the detail view.
+5. User explicitly marks it viewed.
+
+Once viewed:
+
+is_new = false
+is_viewed = true
+
+The NEW badge must immediately disappear.
+
+Do not show "NEW" again simply because the user reloads the page.
+
+================================================
+10. VIEWED JOBS
+================================================
+
+A viewed job should not continue appearing as an unread/new opportunity.
+
+But it should NOT automatically disappear from the entire system.
+
+Separate:
+
+NEW
+VIEWED
+SAVED
+HIDDEN
+APPLIED
+
+These are independent states.
+
+A viewed job may still be found through:
+
+Viewed
+All Jobs
+Saved
+Target Companies
+etc.
+
+================================================
+11. FEED VS JOB DATABASE
+================================================
+
+Separate the concepts.
+
+JOB DATABASE:
+
+The complete normalized job inventory.
+
+JOB FEED:
+
+The currently relevant jobs presented to the user.
+
+The database may contain 10,000+ jobs.
+
+The feed may contain thousands of eligible jobs.
+
+The feed must NOT arbitrarily display only 78 or 89 because of an internal limit.
+
+The feed query should retrieve the complete matching result set using pagination.
+
+================================================
+12. 30 JOBS PER PAGE
+================================================
+
+The user explicitly wants:
+
+30 jobs per page.
+
+Implement:
+
+Page 1 → 30
+Page 2 → next 30
+Page 3 → next 30
+etc.
+
+Do not load only the first 78/89 jobs.
+
+At the bottom:
+
+Showing 1–30 of 2,354 matching opportunities
+
+[Previous] [1] [2] [3] ... [Next]
+
+Use server-side pagination.
+
+Do NOT fetch all thousands of jobs into the browser.
+
+Use:
+
+LIMIT 30
+OFFSET ...
+
+or preferably cursor/keyset pagination where appropriate.
+
+================================================
+13. FILTER COUNT ACCURACY
+================================================
+
+Current UI has numbers such as:
+
+All Jobs 2354
+New 2351
+Target Companies 1724
+Remote 136
+
+while only 89 are actually rendered.
+
+This creates confusion.
+
+Counts must represent the actual query result.
+
+For example:
+
+All Jobs (2,354)
+New (2,351)
+Target Companies (1,724)
+Remote (136)
+
+When the user clicks Target Companies:
+
+show all 1,724 matching jobs with pagination.
+
+Not 78.
+
+================================================
+14. DEDUPLICATION ENGINE
+================================================
+
+The same job may appear through:
+
+- company ATS
+- Greenhouse
+- Lever
+- company career page
+- external job source
+- target-company crawler
+
+Do NOT show duplicates.
+
+Create a robust canonical identity.
+
+Primary identity candidates:
+
+company
++
+normalized title
++
+canonical location
++
+official job ID
+
+Fallback:
+
+company
++
+normalized title
++
+normalized location
++
+description fingerprint
+
+Use fuzzy matching carefully.
+
+Examples:
+
+"Senior Business Development Manager"
+"Senior Business Development Manager - India"
+
+may potentially be the same role.
+
+But:
+
+"Business Development Manager"
+"Senior Business Development Manager"
+
+should not automatically be merged.
+
+Every merged record should retain all source references.
+
+================================================
+15. TARGET COMPANY PRIORITY
+================================================
+
+Jobs from Target Companies should receive a target-company attribute.
+
+Do not duplicate the job.
+
+Instead:
+
+is_target_company = true
+
+and show:
+
+Target
+
+on the card.
+
+Target jobs should be included in the same feed and can be prioritized by sorting.
+
+================================================
+16. WORLDWIDE REMOTE FILTER
+================================================
+
+This is one of the most important corrections.
+
+The user is located in India and wants jobs that are actually accessible from India.
+
+Do NOT label every job containing "Remote" as Worldwide Remote.
+
+Build a Remote Eligibility Engine.
+
+Classify jobs into:
+
+WORLDWIDE / WORK FROM ANYWHERE
+REMOTE — INDIA ELIGIBLE
+REMOTE — REGION RESTRICTED
+REMOTE — COUNTRY RESTRICTED
+HYBRID
+ONSITE
+UNKNOWN
+
+Only jobs explicitly allowing India or worldwide eligibility should enter the user's worldwide remote feed.
+
+Examples that should NOT automatically qualify:
+
+"Remote - US only"
+"Remote - North America"
+"Remote - US/Canada"
+"Remote - UK"
+"Remote - EMEA only"
+
+Examples that may qualify:
+
+"Worldwide"
+"Work from anywhere"
+"Global remote"
+"Remote - India"
+"Remote - anywhere"
+"Remote in India"
+"Open to applicants globally"
+
+But do not rely only on keyword matching.
+
+Use structured ATS location fields first.
+
+Then description evidence.
+
+Then conservative classification.
+
+================================================
+17. REMOTE EVIDENCE
+================================================
+
+Store:
+
+remote_scope
+remote_evidence
+remote_confidence
+
+Example:
+
+remote_scope:
+WORLDWIDE
+
+remote_evidence:
+"Work from anywhere in the world"
+
+Do not display:
+
+Worldwide Remote
+
+unless there is actual supporting evidence.
+
+================================================
+18. MATCHING ENGINE
+================================================
+
+The current ATS matching section is too slow.
+
+Do NOT run a heavyweight matching algorithm every time a job card loads.
+
+Create a precomputed matching pipeline.
+
+When a new job enters the system:
+
+1. Normalize job.
+2. Extract skills.
+3. Extract role.
+4. Extract seniority.
+5. Extract experience.
+6. Extract location.
+7. Extract remote eligibility.
+8. Compare against canonical career profile.
+9. Calculate match score.
+10. Store result.
+
+Example:
+
+match_score = 76
+
+match_reasons = [
+  "Target company",
+  "Partnership experience",
+  "B2B sales experience",
+  "9+ years experience"
+]
+
+Then the UI simply reads the stored result.
+
+Do NOT calculate expensive matching inside every React render.
+
+================================================
+19. MATCHING ALGORITHM
+================================================
+
+Create a transparent weighted scoring system.
+
+For example:
+
+Role relevance            30%
+Core skills               20%
+Experience                15%
+Industry/domain           10%
+Location eligibility      15%
+Employment type             5%
+Target company              5%
+
+Adjust weights through configuration.
+
+Do not use an LLM API for every job.
+
+Use deterministic extraction + local matching first.
+
+If an AI model is already available locally, it can be used asynchronously for difficult cases.
+
+The feed must NEVER wait for AI analysis.
+
+================================================
+20. LAZY / ASYNC ENRICHMENT
+================================================
+
+Job ingestion must be fast.
+
+Pipeline:
+
+FAST PATH:
+
+Fetch
+→ Parse
+→ Normalize
+→ Deduplicate
+→ Basic validation
+→ Insert
+→ Feed
+
+BACKGROUND PATH:
+
+Skill extraction
+→ deeper matching
+→ semantic enrichment
+→ advanced classification
+
+This means jobs can appear quickly and enrichment can happen afterward.
+
+================================================
+21. NEVER BLOCK THE FEED
+================================================
+
+The user should never wait for:
+
+- ATS matching
+- AI analysis
+- salary enrichment
+- advanced classification
+- company enrichment
+
+before seeing the job.
+
+Show the job immediately once minimum validation is complete.
+
+Then progressively enrich it.
+
+================================================
+22. JOB FRESHNESS
+================================================
+
+Every job needs:
+
+posted_at
+first_seen_at
+last_seen_at
+
+Display:
+
+Posted today
+Posted 2d ago
+Posted 5d ago
+Posted 2 weeks ago
+
+Do not confuse:
+
+Posted date
+
+with:
+
+First seen by CareerOS.
+
+If useful, show:
+
+Posted Aug 20
+First seen Aug 21
+
+But do not clutter the card.
+
+================================================
+23. STALE JOB HANDLING
+================================================
+
+Do not show obviously expired jobs as fresh opportunities.
+
+Sources should be periodically checked.
+
+If a job disappears from the official source:
+
+mark it stale.
+
+Do not immediately delete it.
+
+Use states:
+
+ACTIVE
+STALE
+EXPIRED
+REMOVED
+
+The feed should primarily show ACTIVE jobs.
+
+================================================
+24. JOB DATABASE ACTIONS
+================================================
+
+The Job Database should become an actual job pipeline.
+
+Every saved job should have a status dropdown.
+
+Recommended statuses:
+
+New
+Reviewed
+Saved
+Applied
+Application Submitted
+Assignment
+Assessment
+Interview
+Technical Interview
+Hiring Manager Interview
+Final Interview
+Offer
+Offer Accepted
+Rejected
+Withdrawn
+On Hold
+Archived
+
+Do not clutter the interface with unnecessary controls.
+
+Use one clean status dropdown.
+
+Example:
+
+Status: [Interview ▼]
+
+================================================
+25. OPEN JOB → DATABASE
+================================================
+
+When the user opens a job from the feed:
+
+Do NOT automatically remove it from the entire system.
+
+When the user applies/saves it:
+
+persist the appropriate state.
+
+If the user's intended behavior is that opened jobs move out of the active/unread feed, implement that only for the relevant "New" / unread view.
+
+Never destroy the job record.
+
+================================================
+26. FEED STATES
+================================================
+
+Create clean feed tabs:
+
+All Jobs
+New
+Target Companies
+Worldwide Remote
+Saved
+Viewed
+
+Optional:
+
+Salary Disclosed
+
+But the counts must always be real database counts.
+
+================================================
+27. SORTING
+================================================
+
+Provide:
+
+Best Match
+Newest
+Recently Updated
+Salary: High → Low
+Salary: Low → High
+Target Companies
+Company Name
+
+Default:
+
+Best Match
+
+But within similar scores, prioritize freshness.
+
+Example:
+
+final_sort_score =
+match_score
++
+freshness_boost
++
+target_company_boost
++
+verified_source_boost
+
+Do not let an old 95% match permanently dominate a new 75% relevant job.
+
+================================================
+28. DISCOVERY RUN UI
+================================================
+
+Current:
+
+"Discovering..."
+
+is too vague.
+
+Replace with a compact progress component.
+
+Example:
+
+Discovering jobs
+
+742 / 1,411 sources
+3,842 jobs processed
+286 new jobs
+
+[████████████░░░░]
+
+You can continue browsing while discovery runs.
+
+IMPORTANT:
+
+Discovery must run in the background.
+
+The user should NOT be blocked from browsing the feed.
+
+When new jobs arrive:
+
+New jobs available · 24
+
+[View new jobs]
+
+================================================
+29. CONTINUOUS DISCOVERY
+================================================
+
+Do not make the user repeatedly click Discover.
+
+Implement scheduled incremental discovery.
+
+Example:
+
+High-priority target companies:
+every 15–30 minutes where technically reasonable
+
+Other sources:
+periodic polling according to source type and health
+
+The system should intelligently determine polling frequency.
+
+Do not hammer websites.
+
+Use rate limits and caching.
+
+================================================
+30. NEW JOB QUEUE
+================================================
+
+Create a lightweight new-job queue.
+
+When new jobs arrive:
+
+new_job_count += 1
+
+The feed can show:
+
+24 new jobs available
+
+Clicking it moves the user to the newest jobs.
+
+When the user views them, their NEW state disappears.
+
+================================================
+31. INFINITE SCROLL VS PAGINATION
+================================================
+
+Use PAGINATION for the main feed.
+
+30 jobs per page.
+
+This makes the system predictable and prevents thousands of cards from rendering simultaneously.
+
+Do NOT render 2,000+ React cards.
+
+Only render 30.
+
+================================================
+32. PERFORMANCE
+================================================
+
+The current UI already reports high FPS, so do not confuse FPS with backend performance.
+
+The problem is likely:
+
+- excessive queries
+- repeated matching
+- repeated source fetching
+- large client payloads
+- expensive calculations
+- unnecessary React rerenders
+- synchronous enrichment
+- inefficient database queries
+
+Fix the architecture rather than merely adding spinners.
+
+Frontend:
+
+- React.memo where useful
+- stable keys
+- virtualization where appropriate
+- server-side pagination
+- debounced filters
+- cached query results
+- optimistic UI
+- avoid unnecessary global state updates
+
+Backend:
+
+- indexes
+- batch inserts
+- batch updates
+- connection pooling
+- concurrency control
+- queues
+- caching
+- incremental synchronization
+
+Database indexes should exist for:
+
+company_id
+source_id
+posted_at
+first_seen_at
+status
+is_new
+is_viewed
+is_saved
+is_target_company
+remote_scope
+match_score
+canonical_hash
+
+Composite indexes should be added based on actual query patterns.
+
+================================================
+33. SOURCE HEALTH DASHBOARD
+================================================
+
+Create proper source diagnostics.
+
+For each source:
+
+Source
+Status
+Last checked
+Last successful sync
+Jobs found
+New jobs
+Failure count
+Average response time
+Parser status
+HTTP status
+Next scheduled check
+
+Statuses:
+
+Healthy
+Slow
+Failing
+Blocked
+Needs parser
+Inactive
+
+This will make it obvious why a source is not producing jobs.
+
+================================================
+34. ZERO-JOB SOURCES
+================================================
+
+A source returning zero jobs is not necessarily broken.
+
+Track:
+
+zero jobs
+successful empty response
+HTTP failure
+parser failure
+blocked
+expired endpoint
+
+Do not assume:
+
+0 jobs = broken source.
+
+================================================
+35. SOURCE ACTIVATION
+================================================
+
+The existing system has a Source Registry with 1,000+ sources and only some active.
+
+There should be an:
+
+ACTIVATE ALL
+
+action.
+
+When clicked:
+
+- activate all valid registered sources
+- show confirmation
+- process activation in batches
+- update the count live
+- do not freeze UI
+
+Example:
+
+1,248 registered
+1,248 active
+
+If some sources cannot be activated:
+
+1,231 active
+17 require attention
+
+================================================
+36. TARGET COMPANY CAREER SOURCES
+================================================
+
+Every newly added Target Company should automatically attempt to discover its official career page.
+
+Pipeline:
+
+Company name
+→ company identity resolution
+→ official domain discovery
+→ career page discovery
+→ ATS detection
+→ endpoint detection
+→ verification
+→ source activation
+
+Possible ATS:
+
+Greenhouse
+Lever
+Ashby
+Workable
+SmartRecruiters
+Workday
+Teamtailor
+Recruitee
+Jobvite
+BambooHR
+Personio
+and others.
+
+Do not blindly guess.
+
+Verify the discovered page belongs to the company.
+
+================================================
+37. TARGET COMPANY EXCEL IMPORT
+================================================
+
+Excel import must follow this exact format:
+
+Row 1:
+
+Companies name
+
+Rows 2+:
+
+Microsoft
+Stripe
+Figma
+Notion
+etc.
+
+The first row MUST be treated as a header.
+
+Do NOT import:
+
+"Companies name"
+
+as a company.
+
+Show instructions in the upload modal:
+
+Excel format
+
+First row must contain:
+
+Companies name
+
+Add one company name per row below it.
+
+Example:
+
+Companies name
+Microsoft
+Stripe
+Figma
+Notion
+
+After upload:
+
+- parse company names
+- normalize names
+- remove duplicates
+- resolve companies
+- find official domain
+- find career page
+- detect ATS
+- verify
+- activate source
+- begin monitoring
+
+================================================
+38. MANUAL TARGET COMPANY
+================================================
+
+Manual add should require ONLY:
+
+Company name
+
+While typing:
+
+show suggestions.
+
+Example:
+
+Search company
+
+[Mic...]
+
+Microsoft
+Microsoft India
+Microsoft Advertising
+
+User selects company.
+
+System automatically resolves:
+
+logo
+official website
+career page
+ATS
+career source
+
+Do not make the user enter URLs unless automatic resolution fails.
+
+================================================
+39. JOB INGESTION GUARANTEE
+================================================
+
+The system must answer:
+
+"If there are 1,411 active sources, why do I only have 78 jobs?"
+
+Build diagnostics that make the answer obvious.
+
+Example:
+
+1,411 sources active
+
+1,411 queried
+1,382 successful
+29 failed
+
+Jobs:
+
+12,842 fetched
+8,451 valid
+2,104 duplicates
+6,347 unique
+
+Feed eligibility:
+
+3,281 worldwide/India eligible
+1,120 expired
+1,844 location restricted
+102 malformed
+
+Current feed:
+
+3,281 jobs
+
+This is vastly better than simply showing:
+
+1,411 active
+78 jobs
+
+================================================
+40. DATA PIPELINE OBSERVABILITY
+================================================
+
+Every discovery run should produce metrics.
+
+Store:
+
+sources_attempted
+sources_successful
+sources_failed
+jobs_fetched
+jobs_parsed
+jobs_normalized
+jobs_duplicate
+jobs_invalid
+jobs_expired
+jobs_location_rejected
+jobs_remote_rejected
+jobs_new
+jobs_updated
+jobs_feed_eligible
+duration_ms
+
+This is critical for debugging.
+
+================================================
+41. DO NOT FABRICATE JOBS
+================================================
+
+This is non-negotiable.
+
+Every job must originate from a real source.
+
+Do not create placeholder jobs just to increase the count.
+
+Do not manufacture salary.
+
+Do not manufacture remote eligibility.
+
+Do not manufacture posting dates.
+
+Do not manufacture companies.
+
+The goal is a larger feed because the discovery system works better, not because the database contains fabricated records.
+
+================================================
+42. FEED QUERY ARCHITECTURE
+================================================
+
+Build the feed query separately from the raw jobs table.
+
+Conceptually:
+
+jobs
+↓
+validated_jobs
+↓
+eligible_jobs
+↓
+user_job_matches
+↓
+feed
+
+A materialized view or indexed feed table can be used if appropriate.
+
+Precompute expensive fields.
+
+Do not execute expensive joins and matching logic for every card render.
+
+================================================
+43. USER-SPECIFIC FEED
+================================================
+
+The feed should be personalized using:
+
+Career Profile
+Location preferences
+Remote preferences
+Target Companies
+Role preferences
+Experience
+Skills
+Employment type
+Salary preferences
+
+But filtering must be transparent.
+
+When a job is excluded, diagnostics should be able to explain why.
+
+Example:
+
+Excluded:
+Remote — US only
+
+Excluded:
+Requires UK work authorization
+
+Included:
+Worldwide remote
+
+================================================
+44. MATCH REASONS
+================================================
+
+Do not display vague reasons like:
+
+"Core competency match"
+
+Instead show useful reasons:
+
+✓ Target company
+✓ B2B sales experience
+✓ Partnerships experience
+✓ 9+ years experience
+✓ Remote from India
++2 more reasons
+
+The user should understand why the system considers the job relevant.
+
+================================================
+45. JOB DETAIL PANEL
+================================================
+
+Redesign the job detail modal.
+
+Top:
+
+Job title
+Company
+Target / Verified status
+Match score
+
+Then:
+
+Location
+Remote eligibility
+Employment type
+Seniority
+Experience
+
+Then:
+
+Compensation
+
+Only show compensation if employer-stated and verified.
+
+Then:
+
+Why this matches you
+
+Then:
+
+Job description
+
+Then:
+
+Source information
+
+Then:
+
+Actions
+
+Bottom sticky action bar:
+
+Hide
+Save to Job Database
+Apply on Official Portal
+
+Keep the action bar fixed.
+
+================================================
+46. APPLY BUTTON
+================================================
+
+"Apply" must open the official job URL.
+
+Do not redirect through unnecessary internal pages.
+
+Track:
+
+application_started_at
+
+when the user clicks Apply.
+
+Optionally allow the user to change status afterward.
+
+================================================
+47. CLEAN VISUAL DESIGN
+================================================
+
+Keep the existing CareerOS design language but reduce clutter.
+
+Do not add badges everywhere.
+
+Hierarchy should be obvious.
+
+Use:
+
+- strong typography
+- generous spacing
+- restrained badges
+- clear status colors
+- consistent iconography
+- compact metadata
+- subtle borders
+- clean cards
+
+Avoid:
+
+- too many pills
+- excessive green
+- multiple competing highlighted elements
+- giant labels
+- unnecessary decorative components
+
+The "NEW" indicator should be noticeable but subtle.
+
+================================================
+48. LOADING STATES
+================================================
+
+Never show an indefinite spinner.
+
+Every asynchronous process must have:
+
+progress
+current operation
+elapsed time
+cancel option where appropriate
+
+For example:
+
+Discovering jobs
+742 / 1,411 sources
+286 new jobs found
+Running 18 concurrent workers
+
+================================================
+49. CANCELLATION
+================================================
+
+The user should be able to cancel discovery.
+
+Cancel should:
+
+- stop scheduling new work
+- allow currently running safe operations to finish
+- persist partial results
+- mark run cancelled
+
+Do NOT discard jobs already discovered.
+
+================================================
+50. FAILURE RECOVERY
+================================================
+
+If discovery crashes:
+
+resume from the last successful source checkpoint.
+
+Do not restart all 1,411 sources.
+
+Use discovery_run checkpoints.
+
+================================================
+51. BROWSER PERFORMANCE
+================================================
+
+The browser must never receive thousands of jobs at once.
+
+API response should contain:
+
+30 jobs
+pagination metadata
+filter counts
+
+Example:
+
+{
+  "jobs": [...30 jobs...],
+  "page": 1,
+  "pageSize": 30,
+  "total": 2354,
+  "totalPages": 79
+}
+
+================================================
+52. CACHE STRATEGY
+================================================
+
+Cache:
+
+company metadata
+company logos
+career pages
+source configuration
+normalized job records
+match calculations
+filter counts where safe
+
+Invalidate intelligently when source/job data changes.
+
+================================================
+53. COMPANY LOGOS
+================================================
+
+Automatically resolve company logos.
+
+Prefer:
+
+official company assets
+verified favicon
+known ATS/company metadata
+
+Do not repeatedly fetch the same logo.
+
+Store the resolved logo.
+
+Fallback to a clean company initial avatar.
+
+================================================
+54. FINAL JOB FEED EXPERIENCE
+================================================
+
+The final experience should feel like:
+
+"CareerOS continuously finds jobs for me."
+
+NOT:
+
+"I clicked a button and waited for a scraper."
+
+When the user opens Job Feed:
+
+Show existing jobs immediately.
+
+Background discovery continues.
+
+New jobs appear progressively.
+
+Example:
+
+────────────────────────────────
+
+Job Feed & News
+
+2,354 opportunities
++24 new since your last visit
+
+[Discovering 742 / 1,411 sources...]
+
+────────────────────────────────
+
+All Jobs (2,354)
+New (24)
+Target Companies (1,724)
+Worldwide Remote (436)
+Saved (31)
+Viewed (1,892)
+
+────────────────────────────────
+
+30 jobs per page
+
+[NEW] job
+[NEW] job
+job
+job
+job
+...
+
+────────────────────────────────
+
+Showing 1–30 of 2,354
+
+[Previous] [1] [2] [3] ... [79] [Next]
+
+================================================
+55. MOST IMPORTANT ACCEPTANCE TESTS
+================================================
+
+After implementation, test these cases.
+
+TEST 1
+1,411 enabled sources.
+
+Run discovery.
+
+The system must actually process the sources and report the result.
+
+TEST 2
+A source contains 100 jobs.
+
+All valid jobs must be ingested, not an arbitrary small subset.
+
+TEST 3
+A source contains 1,000 jobs.
+
+Pagination must allow the user to browse all eligible jobs.
+
+TEST 4
+Database contains 2,354 eligible jobs.
+
+Feed must show:
+
+2,354 total
+
+and 30 per page.
+
+NOT 78.
+
+TEST 5
+Job salary is not provided.
+
+UI:
+
+Salary not disclosed
+
+NOT:
+
+$1
+
+TEST 6
+Job salary is explicitly:
+
+$120,000–$150,000/year
+
+UI must display exactly that employer-provided range.
+
+TEST 7
+Remote job says:
+
+"Remote — US only"
+
+For an India-based user:
+
+DO NOT classify as Worldwide Remote.
+
+TEST 8
+Remote job says:
+
+"Work from anywhere in the world"
+
+Classify:
+
+Worldwide Remote
+
+TEST 9
+New job appears.
+
+Show:
+
+NEW
+
+User opens it.
+
+NEW disappears.
+
+Reload page.
+
+NEW remains gone.
+
+TEST 10
+User scrolls through job detail.
+
+Job becomes viewed.
+
+NEW disappears.
+
+TEST 11
+Same job exists on Greenhouse and company career page.
+
+Only ONE job appears in feed.
+
+TEST 12
+Target company has a new job.
+
+Job receives:
+
+Target
+
+but does not become a duplicate.
+
+TEST 13
+Excel:
+
+Companies name
+Stripe
+Figma
+Notion
+
+Only:
+
+Stripe
+Figma
+Notion
+
+are imported.
+
+TEST 14
+Manual target company:
+
+"Stripe"
+
+System resolves logo + official career page automatically.
+
+TEST 15
+One source fails.
+
+Other sources continue processing.
+
+TEST 16
+Discovery is running.
+
+User can still browse the feed.
+
+TEST 17
+User cancels discovery.
+
+Partial results remain available.
+
+TEST 18
+Matching service is slow/unavailable.
+
+Jobs still appear in the feed.
+
+Match enrichment completes later.
+
+================================================
+56. IMPLEMENTATION PRIORITY
+================================================
+
+Do this in this order:
+
+PHASE 1
+Fix canonical job schema + database indexes.
+
+PHASE 2
+Fix source ingestion and discovery engine.
+
+PHASE 3
+Fix deduplication.
+
+PHASE 4
+Fix remote/location eligibility.
+
+PHASE 5
+Fix salary extraction/validation.
+
+PHASE 6
+Fix feed query + pagination.
+
+PHASE 7
+Move matching to asynchronous precomputed processing.
+
+PHASE 8
+Fix NEW/viewed state machine.
+
+PHASE 9
+Fix JD rendering.
+
+PHASE 10
+Redesign job cards/detail panel.
+
+PHASE 11
+Source diagnostics.
+
+PHASE 12
+Target company career discovery.
+
+PHASE 13
+Performance optimization.
+
+================================================
+57. IMPORTANT ENGINEERING RULE
+================================================
+
+Do NOT solve these problems by simply increasing a frontend limit from:
+
+78 → 500
+or
+100 → 2,000.
+
+That only hides the architectural problem.
+
+Find out why the system currently has:
+
+1,000+ sources
+but only dozens of usable feed jobs.
+
+Fix the pipeline.
+
+Likewise, do not solve slow matching by adding a bigger spinner.
+
+Move expensive work out of the synchronous request/render path.
+
+================================================
+FINAL OBJECTIVE
+================================================
+
+CareerOS should become a genuine continuously updating job intelligence system.
+
+The system should be able to handle:
+
+thousands of sources
+tens of thousands of jobs
+hundreds of target companies
+continuous discovery
+deduplication
+remote eligibility
+salary verification
+career-profile matching
+new-job tracking
+job pipeline management
+
+without becoming slow or cluttered.
+
+The user should see:
+
+MORE REAL JOBS
+BETTER FILTERING
+ACCURATE DATA
+FAST LOADING
+CLEAR FRESHNESS
+TRUSTWORTHY SALARY
+CORRECT REMOTE ELIGIBILITY
+CLEAN JOB CARDS
+30 JOBS PER PAGE
+COMPLETE PAGINATION
+FAST BACKGROUND DISCOVERY
+
+Do not remove existing functionality unless it is clearly redundant.
+
+Do not use paid external services.
+
+Do not fabricate data.
+
+First inspect the existing architecture/database/API/source ingestion code, identify the actual bottlenecks and incorrect logic, then implement the overhaul.
+
+After implementation, run the acceptance tests above and report:
+
+1. What was wrong
+2. What was changed
+3. Database changes
+4. Discovery architecture
+5. Matching architecture
+6. Feed architecture
+7. Performance improvements
+8. Tests performed
+9. Remaining limitations
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-09-23T07:14:54+05:30.
+</ADDITIONAL_METADATA>
