@@ -101,6 +101,28 @@ export class AshbyATSConnector implements JobSourceConnector {
     { board: 'together', companyName: 'Together AI', domain: 'together.ai' },
     { board: 'langchain', companyName: 'LangChain', domain: 'langchain.com' },
     { board: 'llamaindex', companyName: 'LlamaIndex', domain: 'llamaindex.ai' },
+    { board: 'cursor', companyName: 'Cursor', domain: 'cursor.com' },
+    { board: 'replit', companyName: 'Replit', domain: 'replit.com' },
+    { board: 'modal', companyName: 'Modal', domain: 'modal.com' },
+    { board: 'cohere', companyName: 'Cohere', domain: 'cohere.com' },
+    { board: 'anthropic', companyName: 'Anthropic', domain: 'anthropic.com' },
+    { board: 'resend', companyName: 'Resend', domain: 'resend.com' },
+    { board: 'clerk', companyName: 'Clerk', domain: 'clerk.com' },
+    { board: 'posthog', companyName: 'PostHog', domain: 'posthog.com' },
+    { board: 'raycast', companyName: 'Raycast', domain: 'raycast.com' },
+    { board: 'incident', companyName: 'incident.io', domain: 'incident.io' },
+    { board: 'height', companyName: 'Height', domain: 'height.app' },
+    { board: 'tldraw', companyName: 'tldraw', domain: 'tldraw.com' },
+    { board: 'monzo', companyName: 'Monzo Bank', domain: 'monzo.com' },
+    { board: 'n8n', companyName: 'n8n', domain: 'n8n.io' },
+    { board: 'vapi', companyName: 'Vapi AI', domain: 'vapi.ai' },
+    { board: 'baseten', companyName: 'Baseten', domain: 'baseten.co' },
+    { board: 'jasper', companyName: 'Jasper AI', domain: 'jasper.ai' },
+    { board: 'writer', companyName: 'Writer', domain: 'writer.com' },
+    { board: 'causal', companyName: 'Causal', domain: 'causal.app' },
+    { board: 'chronosphere', companyName: 'Chronosphere', domain: 'chronosphere.io' },
+    { board: 'dune', companyName: 'Dune Analytics', domain: 'dune.com' },
+    { board: 'runwayml', companyName: 'Runway', domain: 'runwayml.com' },
   ];
 
   public async healthCheck(): Promise<boolean> {
@@ -237,14 +259,47 @@ export class GreenhouseATSConnector implements JobSourceConnector {
     { board: 'retool', companyName: 'Retool', domain: 'retool.com' },
     { board: 'airtable', companyName: 'Airtable', domain: 'airtable.com' },
     { board: 'coursera', companyName: 'Coursera', domain: 'coursera.org' },
+    { board: 'affirm', companyName: 'Affirm', domain: 'affirm.com' },
+    { board: 'brex', companyName: 'Brex', domain: 'brex.com' },
+    { board: 'canonical', companyName: 'Canonical', domain: 'canonical.com' },
+    { board: 'carta', companyName: 'Carta', domain: 'carta.com' },
+    { board: 'checkr', companyName: 'Checkr', domain: 'checkr.com' },
+    { board: 'cloudflare', companyName: 'Cloudflare', domain: 'cloudflare.com' },
+    { board: 'coinbase', companyName: 'Coinbase', domain: 'coinbase.com' },
+    { board: 'dbtlabs', companyName: 'dbt Labs', domain: 'getdbt.com' },
+    { board: 'digitalocean', companyName: 'DigitalOcean', domain: 'digitalocean.com' },
+    { board: 'discord', companyName: 'Discord', domain: 'discord.com' },
+    { board: 'dropbox', companyName: 'Dropbox', domain: 'dropbox.com' },
+    { board: 'elastic', companyName: 'Elastic', domain: 'elastic.co' },
+    { board: 'eventbrite', companyName: 'Eventbrite', domain: 'eventbrite.com' },
+    { board: 'gusto', companyName: 'Gusto', domain: 'gusto.com' },
+    { board: 'hashicorp', companyName: 'HashiCorp', domain: 'hashicorp.com' },
+    { board: 'instacart', companyName: 'Instacart', domain: 'instacart.com' },
+    { board: 'intercom', companyName: 'Intercom', domain: 'intercom.com' },
+    { board: 'klarna', companyName: 'Klarna', domain: 'klarna.com' },
+    { board: 'kraken', companyName: 'Kraken', domain: 'kraken.com' },
+    { board: 'mongodb', companyName: 'MongoDB', domain: 'mongodb.com' },
+    { board: 'okta', companyName: 'Okta', domain: 'okta.com' },
+    { board: 'pagerduty', companyName: 'PagerDuty', domain: 'pagerduty.com' },
+    { board: 'pinterest', companyName: 'Pinterest', domain: 'pinterest.com' },
+    { board: 'plaid', companyName: 'Plaid', domain: 'plaid.com' },
+    { board: 'reddit', companyName: 'Reddit', domain: 'reddit.com' },
+    { board: 'robinhood', companyName: 'Robinhood', domain: 'robinhood.com' },
+    { board: 'roblox', companyName: 'Roblox', domain: 'roblox.com' },
+    { board: 'scaleai', companyName: 'Scale AI', domain: 'scale.com' },
+    { board: 'snyk', companyName: 'Snyk', domain: 'snyk.io' },
+    { board: 'snowflake', companyName: 'Snowflake', domain: 'snowflake.com' },
+    { board: 'squarespace', companyName: 'Squarespace', domain: 'squarespace.com' },
+    { board: 'twilio', companyName: 'Twilio', domain: 'twilio.com' },
+    { board: 'uber', companyName: 'Uber', domain: 'uber.com' },
+    { board: 'unity3d', companyName: 'Unity', domain: 'unity.com' },
+    { board: 'zapier', companyName: 'Zapier', domain: 'zapier.com' },
+    { board: 'zendesk', companyName: 'Zendesk', domain: 'zendesk.com' },
   ];
 
   public async healthCheck(): Promise<boolean> {
     try {
-      const url =
-        typeof window !== 'undefined'
-          ? `/api/greenhouse/v1/boards/datadog/jobs`
-          : `https://boards-api.greenhouse.io/v1/boards/datadog/jobs`;
+      const url = `https://boards-api.greenhouse.io/v1/boards/datadog/jobs`;
       const res = await safeFetchJson(url, 4000);
       return Boolean(res && typeof res === 'object');
     } catch {
@@ -266,18 +321,13 @@ export class GreenhouseATSConnector implements JobSourceConnector {
 
     const results = await Promise.allSettled(
       this.boards.map(async (b) => {
-        const primaryUrl =
-          typeof window !== 'undefined'
-            ? `/api/greenhouse/v1/boards/${b.board}/jobs`
-            : `https://boards-api.greenhouse.io/v1/boards/${b.board}/jobs`;
+        const directUrl = `https://boards-api.greenhouse.io/v1/boards/${b.board}/jobs`;
 
         let data: GreenhouseBoardResponse | null = null;
         try {
-          data = (await safeFetchJson(primaryUrl, 3500)) as GreenhouseBoardResponse;
+          data = (await safeFetchJson(directUrl, 4000)) as GreenhouseBoardResponse;
         } catch {
-          // Direct fallback if proxy is bypassed or in non-browser context
-          const directUrl = `https://boards-api.greenhouse.io/v1/boards/${b.board}/jobs`;
-          data = (await safeFetchJson(directUrl, 3500)) as GreenhouseBoardResponse;
+          // Failure on single board isolated gracefully
         }
 
         const boardJobs: RawDiscoveredJob[] = [];
@@ -538,6 +588,224 @@ export class JobicyConnector implements JobSourceConnector {
       this.lastFailureAt = new Date().toISOString();
       this.errorMessage = err instanceof Error ? err.message : 'Jobicy fetch error';
       console.warn('JobicyConnector fetch failed:', err);
+      throw err;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4b. Arbeitnow Global Tech & Remote Connector (CORS enabled public API)
+// ---------------------------------------------------------------------------
+export class ArbeitnowConnector implements JobSourceConnector {
+  public id = 'conn-arbeitnow';
+  public name = 'Arbeitnow Global Job Board';
+  public category: SourceCategory = 'remote_first';
+  public atsType: ATSType = 'custom';
+  public status: 'active' | 'syncing' | 'registered' | 'degraded' | 'failed' | 'disabled' = 'active';
+  public lastChecked: string | null = null;
+  public lastSuccessAt: string | null = null;
+  public lastFailureAt: string | null = null;
+  public jobsDiscoveredCount = 0;
+  public errorMessage?: string;
+
+  public async healthCheck(): Promise<boolean> {
+    try {
+      const res = await safeFetchJson('https://www.arbeitnow.com/api/job-board-api?page=1', 4000);
+      return Boolean(res && typeof res === 'object' && Array.isArray((res as any).data));
+    } catch {
+      return false;
+    }
+  }
+
+  public async fetchJobs(
+    _profile: UserProfile,
+    _sources: JobSourceRegistryEntry[],
+    _careerModel: CareerSearchModel
+  ): Promise<RawDiscoveredJob[]> {
+    this.status = 'syncing';
+    this.lastChecked = new Date().toISOString();
+    this.errorMessage = undefined;
+
+    try {
+      const results: RawDiscoveredJob[] = [];
+      const pagesToFetch = [1, 2, 3, 4, 5];
+
+      const pagePromises = pagesToFetch.map(async (page) => {
+        try {
+          const url = `https://www.arbeitnow.com/api/job-board-api?page=${page}`;
+          const res = (await safeFetchJson(url, 6000)) as {
+            data?: Array<{
+              slug: string;
+              company_name: string;
+              title: string;
+              description: string;
+              remote: boolean;
+              url: string;
+              tags?: string[];
+              job_types?: string[];
+              location?: string;
+              created_at?: number;
+            }>;
+          };
+
+          if (res && Array.isArray(res.data)) {
+            for (const item of res.data) {
+              const postedDateIso = item.created_at
+                ? new Date(item.created_at * 1000).toISOString()
+                : undefined;
+
+              results.push({
+                externalId: `arbeitnow-${item.slug}`,
+                title: item.title,
+                company: item.company_name,
+                jobUrl: item.url,
+                applyUrl: item.url,
+                location: item.location || (item.remote ? 'Remote Worldwide' : 'Global'),
+                remoteType: item.remote ? 'remote' : 'hybrid',
+                salaryStatus: 'not_disclosed',
+                postedDate: postedDateIso,
+                postedDatePrecision: postedDateIso ? 'date_only' : 'not_disclosed',
+                isVerifiedLive: true,
+                lastVerified: new Date().toISOString(),
+                sourceId: this.id,
+                sourceName: 'Arbeitnow Global Job Board',
+                sourceUrl: item.url,
+                atsType: 'custom',
+                requiredSkills: Array.isArray(item.tags) ? item.tags.slice(0, 5) : ['Tech'],
+                description: item.description || item.title,
+              });
+            }
+          }
+        } catch (pageErr) {
+          console.warn(`Arbeitnow page ${page} fetch error:`, pageErr);
+        }
+      });
+
+      await Promise.allSettled(pagePromises);
+
+      this.status = 'active';
+      this.lastSuccessAt = new Date().toISOString();
+      this.jobsDiscoveredCount = results.length;
+      return results;
+    } catch (err: unknown) {
+      this.status = 'failed';
+      this.lastFailureAt = new Date().toISOString();
+      this.errorMessage = err instanceof Error ? err.message : 'Arbeitnow fetch failed';
+      throw err;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4c. Himalayas Remote Jobs Connector (CORS enabled public API)
+// ---------------------------------------------------------------------------
+export class HimalayasConnector implements JobSourceConnector {
+  public id = 'conn-himalayas';
+  public name = 'Himalayas Remote Directory';
+  public category: SourceCategory = 'remote_first';
+  public atsType: ATSType = 'custom';
+  public status: 'active' | 'syncing' | 'registered' | 'degraded' | 'failed' | 'disabled' = 'active';
+  public lastChecked: string | null = null;
+  public lastSuccessAt: string | null = null;
+  public lastFailureAt: string | null = null;
+  public jobsDiscoveredCount = 0;
+  public errorMessage?: string;
+
+  public async healthCheck(): Promise<boolean> {
+    try {
+      const res = await safeFetchJson('https://himalayas.app/jobs/api?limit=2&offset=0', 4000);
+      return Boolean(res && typeof res === 'object' && Array.isArray((res as any).jobs));
+    } catch {
+      return false;
+    }
+  }
+
+  public async fetchJobs(
+    _profile: UserProfile,
+    _sources: JobSourceRegistryEntry[],
+    _careerModel: CareerSearchModel
+  ): Promise<RawDiscoveredJob[]> {
+    this.status = 'syncing';
+    this.lastChecked = new Date().toISOString();
+    this.errorMessage = undefined;
+
+    try {
+      const results: RawDiscoveredJob[] = [];
+      const offsets = [0, 100, 200, 300, 400];
+
+      const offsetPromises = offsets.map(async (offset) => {
+        try {
+          const url = `https://himalayas.app/jobs/api?limit=100&offset=${offset}`;
+          const res = (await safeFetchJson(url, 6000)) as {
+            jobs?: Array<{
+              title: string;
+              companyName: string;
+              companyLogo?: string;
+              applicationLink?: string;
+              guid: string;
+              description?: string;
+              excerpt?: string;
+              location?: string;
+              minSalary?: number;
+              maxSalary?: number;
+              currency?: string;
+              categories?: string[];
+              pubDate?: number;
+            }>;
+          };
+
+          if (res && Array.isArray(res.jobs)) {
+            for (const item of res.jobs) {
+              const applyUrl = item.applicationLink || item.guid;
+              if (!applyUrl || !applyUrl.startsWith('http')) continue;
+
+              const hasSalary = Boolean(item.minSalary || item.maxSalary);
+              const postedDateIso = item.pubDate
+                ? new Date(item.pubDate * 1000).toISOString()
+                : undefined;
+
+              results.push({
+                externalId: `himalayas-${item.guid.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 40)}`,
+                title: item.title,
+                company: item.companyName,
+                companyLogo: item.companyLogo,
+                jobUrl: item.guid,
+                applyUrl,
+                location: item.location || 'Remote Worldwide',
+                remoteType: 'remote',
+                salaryStatus: hasSalary ? 'disclosed' : 'not_disclosed',
+                salaryMin: item.minSalary,
+                salaryMax: item.maxSalary,
+                salaryCurrency: item.currency,
+                salarySource: hasSalary ? 'official_job_posting' : undefined,
+                postedDate: postedDateIso,
+                postedDatePrecision: postedDateIso ? 'exact' : 'not_disclosed',
+                isVerifiedLive: true,
+                lastVerified: new Date().toISOString(),
+                sourceId: this.id,
+                sourceName: 'Himalayas Remote Directory',
+                sourceUrl: item.guid,
+                atsType: 'custom',
+                requiredSkills: Array.isArray(item.categories) ? item.categories.slice(0, 5) : ['Remote', 'Tech'],
+                description: item.description || item.excerpt || item.title,
+              });
+            }
+          }
+        } catch (pageErr) {
+          console.warn(`Himalayas offset ${offset} fetch error:`, pageErr);
+        }
+      });
+
+      await Promise.allSettled(offsetPromises);
+
+      this.status = 'active';
+      this.lastSuccessAt = new Date().toISOString();
+      this.jobsDiscoveredCount = results.length;
+      return results;
+    } catch (err: unknown) {
+      this.status = 'failed';
+      this.lastFailureAt = new Date().toISOString();
+      this.errorMessage = err instanceof Error ? err.message : 'Himalayas fetch failed';
       throw err;
     }
   }
@@ -1064,6 +1332,8 @@ class ConnectorManager {
     new WorkableATSConnector(),
     new RemotiveConnector(),
     new JobicyConnector(),
+    new ArbeitnowConnector(),
+    new HimalayasConnector(),
     new TargetCompanyCrawlerConnector(),
   ];
 
@@ -1299,10 +1569,7 @@ class ConnectorManager {
             let fetchError: any = null;
             try {
               if (s.atsType === 'greenhouse') {
-                const ghUrl =
-                  typeof window !== 'undefined'
-                    ? `/api/greenhouse/v1/boards/${slug}/jobs`
-                    : `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`;
+                const ghUrl = `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`;
                 const ghRes = (await safeFetchJson(ghUrl, 2500)) as any;
                 if (ghRes && Array.isArray(ghRes.jobs) && ghRes.jobs.length > 0) {
                   for (const j of ghRes.jobs) {

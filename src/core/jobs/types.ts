@@ -579,7 +579,10 @@ export interface JobOpportunity {
   activity_timeline?: JobActivityLogEntry[];
   viewed_at?: string;
   viewedAt?: string;
+  firstSeenAt?: string;
   last_seen_at?: string;
+  lastSeenAt?: string;
+  expiresAt?: string;
   new_until?: string;
   is_new?: boolean;
   isNew?: boolean;

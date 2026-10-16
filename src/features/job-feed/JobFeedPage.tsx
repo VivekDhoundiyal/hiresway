@@ -264,8 +264,8 @@ export const JobFeedPage: React.FC = () => {
 
   // Compute multi-factor matching across active opportunities
   const classifiedOpportunities = useMemo(() => {
-    return classifyOpportunities(profile, opportunities);
-  }, [profile, opportunities]);
+    return classifyOpportunities(profile, opportunities, isProfileMatchingEnabled ? 40 : 0);
+  }, [profile, opportunities, isProfileMatchingEnabled]);
 
   // High Match Count (85%+ fit)
   const highMatchCount = useMemo(() => {

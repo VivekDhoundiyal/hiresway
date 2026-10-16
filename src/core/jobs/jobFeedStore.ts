@@ -394,9 +394,19 @@ export class JobFeedStore {
         duplicateCount++;
         mergedCount++;
         // Refresh timestamps if newer source
+        const originalFirstSeen =
+          existing.job.first_seen_at ||
+          existing.job.firstSeenAt ||
+          existing.discovered_at ||
+          existing.published_to_feed_at;
+
         existing.job = {
           ...existing.job,
           ...incomingJob,
+          first_seen_at: originalFirstSeen,
+          firstSeenAt: originalFirstSeen,
+          last_seen_at: nowIso,
+          lastSeenAt: nowIso,
           // Preserve critical feed state
           viewed_at: existing.job.viewed_at || existing.first_viewed_at,
           viewedAt: existing.job.viewedAt || existing.first_viewed_at,
@@ -407,22 +417,30 @@ export class JobFeedStore {
       }
 
       const isPending = !shouldAutoPublish;
-      const discoveredAt = incomingJob.dateDiscovered || nowIso;
-      const discTime = new Date(discoveredAt).getTime();
+      const firstSeen =
+        incomingJob.first_seen_at ||
+        incomingJob.firstSeenAt ||
+        incomingJob.dateDiscovered ||
+        nowIso;
+      const discTime = new Date(firstSeen).getTime();
       const baseTime = isNaN(discTime) ? now.getTime() : discTime;
       const expiresAt = new Date(baseTime + FEED_RETENTION_MS).toISOString();
-      const publishedAt = isPending ? nowIso : discoveredAt;
+      const publishedAt = isPending ? nowIso : firstSeen;
 
       const newItem: FeedItem = {
         id: incomingJob.id,
         job: {
           ...incomingJob,
+          first_seen_at: firstSeen,
+          firstSeenAt: firstSeen,
+          last_seen_at: nowIso,
+          lastSeenAt: nowIso,
           is_new: incomingJob.is_new !== undefined ? incomingJob.is_new : true,
           isNew: incomingJob.isNew !== undefined ? incomingJob.isNew : true,
           is_viewed: Boolean(incomingJob.is_viewed || incomingJob.viewed_at || incomingJob.viewedAt),
           lifecycleState: incomingJob.lifecycleState || 'IN_FEED',
         },
-        discovered_at: discoveredAt,
+        discovered_at: firstSeen,
         published_to_feed_at: publishedAt,
         first_viewed_at: incomingJob.viewed_at || incomingJob.viewedAt || undefined,
         feed_expires_at: expiresAt,

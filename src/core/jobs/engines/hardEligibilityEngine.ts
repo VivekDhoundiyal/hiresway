@@ -46,8 +46,11 @@ export class HardEligibilityEngine {
    */
   public evaluateEligibility(
     job: JobOpportunity | Partial<JobOpportunity> | RawDiscoveredJob,
-    searchConfig: SearchConfiguration
+    searchConfig: SearchConfiguration,
+    options?: { broadDiscovery?: boolean }
   ): HardEligibilityResult {
+    const isBroadDiscovery = Boolean(options?.broadDiscovery);
+
     // -------------------------------------------------------------------------
     // 1. DATA SUFFICIENCY CHECK (Real company, identifiable title)
     // -------------------------------------------------------------------------
@@ -108,10 +111,12 @@ export class HardEligibilityEngine {
     // -------------------------------------------------------------------------
     // 3. STRICT 14-DAY RETENTION & FRESHNESS GATE (originalPostedAt <= 14 Days)
     // -------------------------------------------------------------------------
+    // In broad discovery mode, live discovered ATS vacancies are retained in the feed
+    // for 14 days from firstSeenAt. In strict role gate mode, maxAge applies to postedDate.
     const isTargetCo = Boolean((job as any).isTargetCompany);
     const maxAge = searchConfig.maxAgeDays || 14;
     const freshCheck = freshnessEngine.isJobWithinAgeWindow(job as any, maxAge);
-    if (!freshCheck.eligible && !isTargetCo) {
+    if (!freshCheck.eligible && !isTargetCo && !isBroadDiscovery) {
       return {
         eligible: false,
         rejectionCode: 'STALE_JOB',
@@ -145,6 +150,14 @@ export class HardEligibilityEngine {
           rejectionExplanation: `Candidate explicitly excluded ${company} from active opportunities.`,
         };
       }
+    }
+
+    // In broad discovery intake, active vacancies are admitted into inventory and scored
+    // transparently via relevance ranking, rather than being discarded at discovery time.
+    if (isBroadDiscovery) {
+      return {
+        eligible: true,
+      };
     }
 
     // -------------------------------------------------------------------------

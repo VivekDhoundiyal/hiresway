@@ -959,7 +959,7 @@ export function opportunityToJobPosting(opp: JobOpportunity): JobPosting {
 export function classifyOpportunities(
   profile: UserProfile,
   opportunities: JobOpportunity[],
-  minScoreThreshold: number = 0
+  minScoreThreshold: number = 40
 ): (JobOpportunity & { match: JobMatchAnalysis })[] {
   const userTargetCompanies = (profile?.targetMarkets?.targetCompanies || []).map(clean);
   const processed: (JobOpportunity & { match: JobMatchAnalysis })[] = [];
@@ -1083,10 +1083,11 @@ export function classifyOpportunities(
       }
     }
 
-    // Drop disqualified/excluded jobs (overallScore === 0 from hard exclusions or < 40 threshold)
+    // Drop disqualified/excluded jobs (overallScore === 0 from hard exclusions or below effective threshold)
     // Note: Do not drop if match is simply pending profile setup (score === 0 with 'Profile match pending')
     const isPending = match.strengths.some((r) => r.toLowerCase().includes('profile match pending'));
-    if (!isPending && (match.overallScore < 40 || (minScoreThreshold > 0 && match.overallScore < minScoreThreshold))) {
+    const effectiveMin = minScoreThreshold !== undefined ? minScoreThreshold : 40;
+    if (!isPending && effectiveMin > 0 && match.overallScore < effectiveMin) {
       continue;
     }
 

@@ -23,6 +23,7 @@ import { buildCareerSearchModel } from './careerSearchModel';
 import { discoveryLedgerEngine } from './engines/discoveryLedgerEngine';
 import { buildSearchConfiguration } from './searchConfiguration';
 import { hardEligibilityEngine } from './engines/hardEligibilityEngine';
+import { jobMatchingEngine } from './engines/jobMatchingEngine';
 import { jobFeedStore } from './jobFeedStore';
 
 const ACTIVE_RUN_STORAGE_KEY = 'careeros_active_discovery_run_v2';
@@ -501,21 +502,37 @@ export class JobDiscoveryEngine {
             runRecord.invalidRecordsCount = (runRecord.invalidRecordsCount || 0) + invalidInBatch;
             runRecord.jobsRejectedCount = (runRecord.jobsRejectedCount || 0) + invalidInBatch;
 
-            // Hard Eligibility Gate: only jobs passing hard requirements enter active feed
+            // Candidate Intake: Structural authenticity check & transparent relevance scoring
             const eligibleJobs: JobOpportunity[] = [];
+            const nowIso = new Date().toISOString();
+
             for (const job of normalized) {
-              const eligibility = hardEligibilityEngine.evaluateEligibility(job, searchConfig);
+              const eligibility = hardEligibilityEngine.evaluateEligibility(job, searchConfig, { broadDiscovery: true });
               if (eligibility.eligible) {
+                // Compute transparent multi-factor relevance score
+                const matchAnalysis = jobMatchingEngine.getMatchAnalysis(job, profile);
+                const firstSeen = (job as any).firstSeenAt || (job as any).first_seen_at || job.dateDiscovered || nowIso;
+                const expiresAt = (job as any).expiresAt || (job as any).expires_at || new Date(new Date(firstSeen).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
                 eligibleJobs.push({
                   ...job,
                   lifecycleState: 'IN_FEED' as JobLifecycleState,
+                  match_score: matchAnalysis.overallScore,
+                  match_reasons: matchAnalysis.strengths,
+                  mismatch_reasons: matchAnalysis.gaps,
+                  first_seen_at: firstSeen,
+                  firstSeenAt: firstSeen,
+                  last_seen_at: nowIso,
+                  lastSeenAt: nowIso,
+                  expires_at: expiresAt,
+                  expiresAt: expiresAt,
                 });
               } else {
                 runRecord.jobsRejectedCount = (runRecord.jobsRejectedCount || 0) + 1;
               }
             }
 
-            runRecord.profileMatchedCount = (runRecord.profileMatchedCount || 0) + eligibleJobs.length;
+            runRecord.profileMatchedCount = (runRecord.profileMatchedCount || 0) + eligibleJobs.filter(j => (j.match_score || 0) >= 40).length;
 
             // Ingest discovered jobs into dedicated JobFeedStore (never directly to Job Database!)
             const { newMatchingCount, publishedCount, pendingCount: _pendingCount, mergedCount, duplicateCount } =
