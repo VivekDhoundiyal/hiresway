@@ -15,9 +15,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onItemClick })
   const { isCollapsed, toggleCollapsed } = useSidebar();
   const [isCopilotCollapsed, setIsCopilotCollapsed] = useState(() => {
     try {
-      return localStorage.getItem('careeros_copilot_collapsed') === 'true';
+      const stored = localStorage.getItem('careeros_copilot_collapsed');
+      return stored !== null ? stored === 'true' : true;
     } catch {
-      return false;
+      return true;
     }
   });
 

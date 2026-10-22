@@ -36,12 +36,16 @@ export function useJobFeed() {
   const [pendingNewJobsCount, setPendingNewJobsCount] = useState(0);
   const [activeRun, setActiveRun] = useState<DiscoveryRunRecord | null>(() => discoveryEngine.getActiveRun());
 
-  const [lastUpdated, setLastUpdated] = useState<Date>(() => {
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(() => {
+    const lastRun = discoveryEngine.getLastCompletedRun();
+    if (lastRun && lastRun.completedAt) {
+      return new Date(lastRun.completedAt);
+    }
     try {
       const stored = localStorage.getItem(LAST_DISCOVERY_KEY);
-      return stored ? new Date(stored) : new Date();
+      return stored ? new Date(stored) : null;
     } catch {
-      return new Date();
+      return null;
     }
   });
 

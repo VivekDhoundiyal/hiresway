@@ -120,13 +120,16 @@ export const JobFeedPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Helper: format unobtrusive last updated string
-  const formatLastUpdated = (date: Date): string => {
+  const formatLastUpdated = (date: Date | null): string => {
+    if (!date) return 'Not yet scanned';
     const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
     if (diffSec < 60) return 'just now';
     const diffMin = Math.floor(diffSec / 60);
     if (diffMin < 60) return `${diffMin}m ago`;
     const diffHours = Math.floor(diffMin / 60);
-    return `${diffHours}h ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   };
 
   // Opportunity Inbox Active Section
@@ -984,7 +987,7 @@ export const JobFeedPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-16 w-full animate-fadeIn min-w-0">
+    <div className="space-y-3 pb-12 w-full animate-fadeIn min-w-0">
       {/* 1. Header (Compact SaaS Layout: Title + Unified Statistics Strip + Actions) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
         <div>
@@ -1384,11 +1387,18 @@ export const JobFeedPage: React.FC = () => {
 
           <div className="h-3.5 w-px bg-gray-200 hidden sm:block" />
 
-          {/* Freshness Indicator */}
-          <div className="flex items-center gap-1 text-xs text-gray-400">
-            <Clock className="h-3.5 w-3.5 text-gray-400" />
-            <span>Updated {formatLastUpdated(lastUpdated)}</span>
-          </div>
+          {/* Freshness Indicator / Live Discovery Telemetry */}
+          {isScanning ? (
+            <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
+              <RefreshCw className="h-3 w-3 animate-spin text-blue-600" />
+              <span>Scanning live sources...</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <Clock className="h-3.5 w-3.5 text-gray-400" />
+              <span>Updated {formatLastUpdated(lastUpdated)}</span>
+            </div>
+          )}
 
           {rejectedJobs.length > 0 && (
             <>

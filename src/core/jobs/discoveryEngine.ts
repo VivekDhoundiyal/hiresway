@@ -58,6 +58,9 @@ export class JobDiscoveryEngine {
   private activeRun: DiscoveryRunRecord | null = null;
   private isRunning = false;
   private abortController: AbortController | null = null;
+  private inFlightRunPromise: Promise<DiscoveryRunRecord> | null = null;
+  private isContinuousMode = false;
+  private watchdogTimer: any = null;
   private progressListeners: Set<DiscoveryProgressListener> = new Set();
   private batchListeners: Set<DiscoveryBatchListener> = new Set();
   private state: ContinuousDiscoveryState = 'DISCOVER';
@@ -82,13 +85,13 @@ export class JobDiscoveryEngine {
       const run: DiscoveryRunRecord = JSON.parse(stored);
       const elapsed = Date.now() - new Date(run.startedAt).getTime();
 
-      // On browser reload/restart, JavaScript workers are not running in memory.
+      // On browser reload/restart or stale runs older than 60s, workers are not active in memory.
       // Cleanly settle previous run to prevent false "RUNNING" reporting with 0 active workers.
       if (run.status === 'RUNNING') {
         run.status = run.queriedSourceCount > 0 ? 'COMPLETED_WITH_ERRORS' : 'CANCELLED';
         run.completedAt = new Date().toISOString();
         run.durationMs = elapsed;
-        run.errorMessage = 'Previous run settled upon browser restart';
+        run.errorMessage = 'Previous run settled upon session recovery';
         this.saveRunHistory(run);
         localStorage.removeItem(ACTIVE_RUN_STORAGE_KEY);
         this.activeRun = null;
@@ -203,18 +206,19 @@ export class JobDiscoveryEngine {
    * Runs prioritized batches without resetting or wiping the feed.
    */
   public async startContinuousLoop(profile?: UserProfile): Promise<void> {
+    this.isContinuousMode = true;
     if (this.state === 'DISCOVERING' && this.isRunning) return;
 
     this.setState('DISCOVERING', null);
     discoveryLedgerEngine.setStatus('RUNNING', 'Continuous Discovery active');
 
     const runSlice = async () => {
-      if (this.state !== 'DISCOVERING') return;
+      if (this.state !== 'DISCOVERING' || !this.isContinuousMode) return;
 
       try {
         await this.startDiscoveryRun(profile || ({} as any));
 
-        if (this.state !== 'DISCOVERING') return;
+        if (this.state !== 'DISCOVERING' || !this.isContinuousMode) return;
 
         // Schedule next incremental slice (every 10s while active)
         this.scheduledTimer = setTimeout(runSlice, 10000);
@@ -234,16 +238,22 @@ export class JobDiscoveryEngine {
    * Pauses continuous discovery without deleting existing jobs or resetting the feed.
    */
   public pauseLoop(): void {
+    this.isContinuousMode = false;
     this.setState('PAUSED');
     if (this.scheduledTimer) {
       clearTimeout(this.scheduledTimer);
       this.scheduledTimer = null;
+    }
+    if (this.watchdogTimer) {
+      clearTimeout(this.watchdogTimer);
+      this.watchdogTimer = null;
     }
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
     }
     this.isRunning = false;
+    this.inFlightRunPromise = null;
     sourceOrchestrator.setProcessing(false);
     discoveryLedgerEngine.setStatus('PAUSED', 'Continuous Discovery paused by user');
   }
@@ -261,24 +271,35 @@ export class JobDiscoveryEngine {
    * Completely stops continuous discovery.
    */
   public stopLoop(): void {
+    this.isContinuousMode = false;
     this.setState('DISCOVER', null);
     if (this.scheduledTimer) {
       clearTimeout(this.scheduledTimer);
       this.scheduledTimer = null;
+    }
+    if (this.watchdogTimer) {
+      clearTimeout(this.watchdogTimer);
+      this.watchdogTimer = null;
     }
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
     }
     this.isRunning = false;
+    this.inFlightRunPromise = null;
     sourceOrchestrator.setProcessing(false);
     discoveryLedgerEngine.setStatus('IDLE', 'Discovery Engine Idle / Ready');
   }
 
   public cancelRun(): void {
+    this.isContinuousMode = false;
     if (this.scheduledTimer) {
       clearTimeout(this.scheduledTimer);
       this.scheduledTimer = null;
+    }
+    if (this.watchdogTimer) {
+      clearTimeout(this.watchdogTimer);
+      this.watchdogTimer = null;
     }
     this.setState('DISCOVER', null);
 
@@ -288,6 +309,8 @@ export class JobDiscoveryEngine {
       this.abortController.abort();
       this.abortController = null;
     }
+
+    this.inFlightRunPromise = null;
 
     this.activeRun.status = 'CANCELLED';
     this.activeRun.completedAt = new Date().toISOString();
@@ -331,11 +354,23 @@ export class JobDiscoveryEngine {
     profile: UserProfile,
     options?: { maxSources?: number; forceRescan?: boolean }
   ): Promise<DiscoveryRunRecord> {
-    // Prevent duplicate concurrent runs
+    // Prevent duplicate concurrent runs - share active in-flight promise if available
+    if (this.isRunning && this.inFlightRunPromise) {
+      return this.inFlightRunPromise;
+    }
     if (this.isRunning && this.activeRun) {
       return this.activeRun;
     }
 
+    const runPromise = this.executeDiscoveryRun(profile, options);
+    this.inFlightRunPromise = runPromise;
+    return runPromise;
+  }
+
+  private async executeDiscoveryRun(
+    profile: UserProfile,
+    options?: { maxSources?: number; forceRescan?: boolean }
+  ): Promise<DiscoveryRunRecord> {
     const runId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const startedAt = new Date().toISOString();
     const startTime = Date.now();
@@ -343,6 +378,14 @@ export class JobDiscoveryEngine {
     this.isRunning = true;
     this.abortController = new AbortController();
     sourceOrchestrator.setProcessing(true);
+
+    if (this.watchdogTimer) clearTimeout(this.watchdogTimer);
+    this.watchdogTimer = setTimeout(() => {
+      if (this.isRunning && this.abortController) {
+        console.warn('Discovery run watchdog timeout (60s) reached - auto-aborting hung requests');
+        this.abortController.abort();
+      }
+    }, 60000);
 
     // 1. Synchronize Target Companies from Profile & Store
     const userTargetCompanies = [
@@ -711,10 +754,15 @@ export class JobDiscoveryEngine {
 
       return runRecord;
     } finally {
+      if (this.watchdogTimer) {
+        clearTimeout(this.watchdogTimer);
+        this.watchdogTimer = null;
+      }
       this.isRunning = false;
+      this.inFlightRunPromise = null;
       this.abortController = null;
       sourceOrchestrator.setProcessing(false);
-      if (this.state !== 'PAUSED' && !this.scheduledTimer) {
+      if (this.state !== 'PAUSED' && !this.isContinuousMode) {
         this.setState('DISCOVER');
       }
     }
