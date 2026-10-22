@@ -204,14 +204,12 @@ export const JobCard: React.FC<JobCardProps> = React.memo<JobCardProps>(({
 
           {/* Salary */}
           {salaryInfo.disclosed ? (
-            <div className="flex items-center gap-1 shrink-0 text-[11px] text-slate-600 font-medium" title={salaryInfo.text}>
-              <span className="text-slate-400">$</span>
-              <span>{salaryInfo.text}</span>
+            <div className="flex items-center gap-1 shrink-0 text-[11px] text-emerald-700 font-medium" title={salaryInfo.text}>
+              <span className="truncate max-w-[140px]">{salaryInfo.text}</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1 shrink-0 text-[11px] text-slate-600 font-medium" title="Estimated competitive salary band">
-              <span className="text-slate-400">$</span>
-              <span>$140K - $200K</span>
+            <div className="flex items-center gap-1 shrink-0 text-[11px] text-slate-400 font-normal" title="Salary not disclosed by employer">
+              <span>Salary not disclosed</span>
             </div>
           )}
 
@@ -238,12 +236,17 @@ export const JobCard: React.FC<JobCardProps> = React.memo<JobCardProps>(({
           <button
             type="button"
             onClick={() => {
-              if (onApply) onApply(job.id);
-              else if (applyTargetUrl) window.open(applyTargetUrl, '_blank', 'noopener,noreferrer');
-              else onOpen(job);
+              if (applyTargetUrl) {
+                window.open(applyTargetUrl, '_blank', 'noopener,noreferrer');
+              }
+              if (onApply) {
+                onApply(job.id);
+              } else if (!applyTargetUrl) {
+                onOpen(job);
+              }
             }}
             className="p-1.5 rounded-lg border border-slate-200/80 bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-colors cursor-pointer"
-            title="Open application page"
+            title={applyTargetUrl ? "Open application page" : "View job details"}
             aria-label="Open job application"
           >
             <ArrowUpRight className="h-4 w-4" />

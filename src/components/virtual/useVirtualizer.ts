@@ -60,7 +60,7 @@ export function useVirtualizer({
 
   const totalSize = rowOffsets.length > 0 ? rowOffsets[rowCount] : 0;
 
-  // Scroll listener
+  // Ultra-smooth scroll listener with requestAnimationFrame and zero layout thrashing
   useEffect(() => {
     const resolveScrollParent = (): HTMLElement | Window | null => {
       if (scrollContainerRef?.current) return scrollContainerRef.current;
@@ -72,46 +72,62 @@ export function useVirtualizer({
     const element = resolveScrollParent();
     if (!element) return;
 
-    const handleScroll = () => {
-      let top = 0;
-      let height = 800;
+    let rafId: number | null = null;
 
+    const measureOffset = () => {
+      if (!containerRef?.current) return;
       if (element === window) {
-        top = window.scrollY || document.documentElement.scrollTop;
-        height = window.innerHeight || 800;
-        if (containerRef?.current) {
-          const rect = containerRef.current.getBoundingClientRect();
-          setContainerOffset(rect.top + top);
-        }
+        const top = window.scrollY || document.documentElement.scrollTop;
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerOffset(rect.top + top);
+        setViewportHeight(window.innerHeight || 800);
       } else {
         const el = element as HTMLElement;
-        top = el.scrollTop;
-        height = el.clientHeight || 800;
-        if (containerRef?.current) {
-          const containerRect = containerRef.current.getBoundingClientRect();
-          const parentRect = el.getBoundingClientRect();
-          setContainerOffset(containerRect.top - parentRect.top + top);
-        }
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const parentRect = el.getBoundingClientRect();
+        setContainerOffset(containerRect.top - parentRect.top + el.scrollTop);
+        setViewportHeight(el.clientHeight || 800);
       }
+    };
 
-      setScrollTop(top);
-      setViewportHeight(height);
-      setIsScrolling(true);
+    const handleScroll = () => {
+      if (rafId !== null) return;
 
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => {
-        setIsScrolling(false);
-      }, 150);
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        let top = 0;
+        if (element === window) {
+          top = window.scrollY || document.documentElement.scrollTop;
+        } else {
+          top = (element as HTMLElement).scrollTop;
+        }
+
+        setScrollTop(top);
+        setIsScrolling(true);
+
+        if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = setTimeout(() => {
+          setIsScrolling(false);
+        }, 120);
+      });
+    };
+
+    const handleResize = () => {
+      measureOffset();
+      handleScroll();
     };
 
     element.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll, { passive: true });
-    // Run initial measure
+    window.addEventListener('resize', handleResize, { passive: true });
+
+    // Initial offset measurement
+    measureOffset();
     handleScroll();
 
     return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
       element.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
+      window.removeEventListener('resize', handleResize);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
   }, [scrollContainerRef, containerRef]);

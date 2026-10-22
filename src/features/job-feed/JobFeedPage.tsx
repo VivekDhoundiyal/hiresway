@@ -469,38 +469,57 @@ export const JobFeedPage: React.FC = () => {
   }, [baseSectionOpportunities]);
 
   const seniorityOptions = useMemo<MultiSelectOption[]>(() => {
-    const levels = [
-      { value: 'junior', label: 'Junior / Associate' },
-      { value: 'mid', label: 'Mid-Level' },
-      { value: 'senior', label: 'Senior' },
-      { value: 'lead', label: 'Lead / Staff' },
-      { value: 'principal', label: 'Principal' },
-      { value: 'director', label: 'Director / VP' },
-      { value: 'executive', label: 'Executive' },
+    const counts: Record<string, number> = {
+      junior: 0,
+      mid: 0,
+      senior: 0,
+      lead: 0,
+      principal: 0,
+      director: 0,
+      executive: 0,
+    };
+    baseSectionOpportunities.forEach((j) => {
+      const sl = ((j.seniority as string) || '').toLowerCase();
+      const tl = j.title.toLowerCase();
+      if (sl.includes('junior') || tl.includes('junior') || sl.includes('associate') || tl.includes('associate')) counts.junior++;
+      if (sl.includes('mid') || tl.includes('mid')) counts.mid++;
+      if (sl.includes('senior') || tl.includes('senior') || sl.includes('sr.') || tl.includes('sr.')) counts.senior++;
+      if (sl.includes('lead') || tl.includes('lead') || sl.includes('staff') || tl.includes('staff')) counts.lead++;
+      if (sl.includes('principal') || tl.includes('principal')) counts.principal++;
+      if (sl.includes('director') || tl.includes('director') || sl.includes('vp') || tl.includes('vp')) counts.director++;
+      if (sl.includes('executive') || tl.includes('executive') || sl.includes('head') || tl.includes('head')) counts.executive++;
+    });
+    return [
+      { value: 'junior', label: 'Junior / Associate', count: counts.junior },
+      { value: 'mid', label: 'Mid-Level', count: counts.mid },
+      { value: 'senior', label: 'Senior', count: counts.senior },
+      { value: 'lead', label: 'Lead / Staff', count: counts.lead },
+      { value: 'principal', label: 'Principal', count: counts.principal },
+      { value: 'director', label: 'Director / VP', count: counts.director },
+      { value: 'executive', label: 'Executive', count: counts.executive },
     ];
-    return levels.map((lvl) => ({
-      ...lvl,
-      count: baseSectionOpportunities.filter((j) => {
-        const sl = ((j.seniority as string) || '').toLowerCase();
-        const tl = j.title.toLowerCase();
-        return sl.includes(lvl.value) || tl.includes(lvl.value);
-      }).length,
-    }));
   }, [baseSectionOpportunities]);
 
   const employmentTypeOptions = useMemo<MultiSelectOption[]>(() => {
-    const types = [
-      { value: 'full-time', label: 'Full-time' },
-      { value: 'contract', label: 'Contract' },
-      { value: 'part-time', label: 'Part-time' },
-      { value: 'internship', label: 'Internship' },
+    const counts: Record<string, number> = {
+      'full-time': 0,
+      contract: 0,
+      'part-time': 0,
+      internship: 0,
+    };
+    baseSectionOpportunities.forEach((j) => {
+      const et = (j.employmentType || '').toLowerCase();
+      if (et.includes('full-time') || et.includes('full time')) counts['full-time']++;
+      if (et.includes('contract')) counts.contract++;
+      if (et.includes('part-time') || et.includes('part time')) counts['part-time']++;
+      if (et.includes('internship') || et.includes('intern')) counts.internship++;
+    });
+    return [
+      { value: 'full-time', label: 'Full-time', count: counts['full-time'] },
+      { value: 'contract', label: 'Contract', count: counts.contract },
+      { value: 'part-time', label: 'Part-time', count: counts['part-time'] },
+      { value: 'internship', label: 'Internship', count: counts.internship },
     ];
-    return types.map((t) => ({
-      ...t,
-      count: baseSectionOpportunities.filter((j) =>
-        (j.employmentType || '').toLowerCase().includes(t.value)
-      ).length,
-    }));
   }, [baseSectionOpportunities]);
 
   const salaryOptions = useMemo<MultiSelectOption[]>(() => {
@@ -802,7 +821,12 @@ export const JobFeedPage: React.FC = () => {
     applyJob(jobId);
     const target = opportunities.find((j) => j.id === jobId) || savedJobs.find((j) => j.id === jobId);
     if (target) {
-      setActionNotice(`Applied to "${target.title}" at ${target.company}! Tracked in Applications.`);
+      const rawUrl = target.applyUrl || target.jobUrl;
+      const targetUrl = jobVerificationEngine.sanitizeApplyUrl(rawUrl);
+      if (targetUrl) {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      }
+      setActionNotice(`Applied to "${target.title}" at ${target.company}! Opening application portal.`);
       setTimeout(() => setActionNotice(null), 3500);
     }
   }, [applyJob, opportunities, savedJobs]);
@@ -961,86 +985,83 @@ export const JobFeedPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-16 w-full animate-fadeIn min-w-0">
-      {/* 1. Header (Clean HiresWay Layout: Title/Subtitle + Telemetry + 4-Metric Card + Actions) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 border-b border-gray-100 pb-3">
+      {/* 1. Header (Compact SaaS Layout: Title + Unified Statistics Strip + Actions) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-            Job Feed & News
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            Job Feed
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-            Discover relevant jobs matched to your profile
+          <p className="text-xs text-gray-500 mt-0.5">
+            Opportunities matched to your profile
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Truthful Telemetry: Discovered | Qualified | Displayed */}
-          <div className="flex items-center gap-2 bg-gray-50/90 border border-gray-200/80 px-2.5 py-1.5 rounded-xl text-xs shadow-3xs">
-            <div className="flex items-center gap-1.5" title="Total authentic jobs discovered across sources">
-              <span className="text-gray-500 font-medium text-[11px]">Discovered</span>
-              <span className="font-bold text-gray-900 bg-white border border-gray-200 px-1.5 py-0.5 rounded text-[11px]">
-                {databaseTabCounts.all.toLocaleString()}
-              </span>
-            </div>
-            <span className="text-gray-300">/</span>
-            <div className="flex items-center gap-1.5" title="Profile-matched opportunities meeting relevance threshold">
-              <span className="text-gray-500 font-medium text-[11px]">Qualified</span>
-              <span className="font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded text-[11px]">
-                {classifiedOpportunities.length.toLocaleString()}
-              </span>
-            </div>
-            <span className="text-gray-300">/</span>
-            <div className="flex items-center gap-1.5" title="Jobs matching your active filters">
-              <span className="text-gray-500 font-medium text-[11px]">Displayed</span>
-              <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[11px]">
-                {filteredOpportunities.length.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* 4-Metric Summary Card (from Reference Image) */}
-          <div className="bg-white border border-gray-200 rounded-xl px-3 py-1 flex items-center divide-x divide-gray-100 shadow-3xs">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Unified Compact Statistics Strip */}
+          <div className="bg-white border border-gray-200 rounded-xl px-2.5 py-1 flex items-center divide-x divide-gray-100 shadow-3xs">
             <div
               onClick={() => { setActiveSection('all'); resetFilters(); }}
-              className="px-2.5 sm:px-3 text-center cursor-pointer hover:opacity-80 transition-opacity"
-              title="Qualified jobs matched to your profile"
+              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
+              title="Total authentic opportunities discovered across sources"
             >
-              <div className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
+              <div className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">
+                {databaseTabCounts.all.toLocaleString()}
+              </div>
+              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Discovered</div>
+            </div>
+
+            <div
+              onClick={() => { setActiveSection('all'); resetFilters(); }}
+              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
+              title="Qualified jobs matched to your career profile"
+            >
+              <div className="text-xs sm:text-sm font-bold text-blue-700 leading-tight">
                 {classifiedOpportunities.length.toLocaleString()}
               </div>
-              <div className="text-[10px] font-semibold text-amber-600 tracking-wider">Qualified</div>
+              <div className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Qualified</div>
+            </div>
+
+            <div
+              className="px-2 text-center"
+              title="Jobs currently matching your active filters"
+            >
+              <div className="text-xs sm:text-sm font-bold text-teal-700 leading-tight">
+                {filteredOpportunities.length.toLocaleString()}
+              </div>
+              <div className="text-[10px] font-semibold text-teal-600 uppercase tracking-wider">Displayed</div>
             </div>
 
             <div
               onClick={() => setActiveSection('new')}
-              className="px-2.5 sm:px-3 text-center cursor-pointer hover:opacity-80 transition-opacity"
+              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
               title="New unread opportunities today"
             >
-              <div className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
+              <div className="text-xs sm:text-sm font-bold text-emerald-700 leading-tight">
                 {databaseTabCounts.newCount.toLocaleString()}
               </div>
-              <div className="text-[10px] font-semibold text-blue-600 tracking-wider">New Today</div>
+              <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">New Today</div>
             </div>
 
             <div
               onClick={() => setActiveSection('high_priority')}
-              className="px-2.5 sm:px-3 text-center cursor-pointer hover:opacity-80 transition-opacity"
+              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
               title="High Match opportunities (≥85% score)"
             >
-              <div className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
+              <div className="text-xs sm:text-sm font-bold text-amber-700 leading-tight">
                 {highMatchCount.toLocaleString()}
               </div>
-              <div className="text-[10px] font-semibold text-emerald-600 tracking-wider">High Match</div>
+              <div className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">High Match</div>
             </div>
 
             <div
               onClick={() => setActiveSection('target_companies')}
-              className="px-2.5 sm:px-3 text-center cursor-pointer hover:opacity-80 transition-opacity"
-              title="Target Company opportunities"
+              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
+              title="Opportunities at your target companies"
             >
-              <div className="text-sm sm:text-base font-bold text-gray-900 leading-tight">
+              <div className="text-xs sm:text-sm font-bold text-purple-700 leading-tight">
                 {databaseTabCounts.targetCompanies.toLocaleString()}
               </div>
-              <div className="text-[10px] font-semibold text-purple-600 tracking-wider">Target Companies</div>
+              <div className="text-[10px] font-semibold text-purple-600 uppercase tracking-wider">Targets</div>
             </div>
           </div>
 
