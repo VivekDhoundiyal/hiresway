@@ -70,6 +70,20 @@ export function useJobFeed() {
     discoveryEngine.getLastCompletedRun()
   );
 
+  const [lastAttemptAt, setLastAttemptAt] = useState<Date | null>(() => {
+    const ts = discoveryEngine.getLastAttemptAt();
+    return ts ? new Date(ts) : null;
+  });
+
+  const [lastSuccessAt, setLastSuccessAt] = useState<Date | null>(() => {
+    const ts = discoveryEngine.getLastSuccessAt();
+    return ts ? new Date(ts) : null;
+  });
+
+  const [sourcesActuallyRan, setSourcesActuallyRan] = useState<any[]>(() => {
+    return discoveryEngine.getSourcesActuallyRan();
+  });
+
   const [feedAgeDays, setFeedAgeDays] = useState<number>(MAX_JOB_AGE_DAYS);
 
   const refreshState = useCallback(() => {
@@ -94,6 +108,12 @@ export function useJobFeed() {
       setDiscoveryProgress(event);
       setIsScanning(event.status === 'RUNNING' || event.status === 'QUEUED');
       setActiveRun(discoveryEngine.getActiveRun());
+
+      const attempt = discoveryEngine.getLastAttemptAt();
+      if (attempt) setLastAttemptAt(new Date(attempt));
+      const success = discoveryEngine.getLastSuccessAt();
+      if (success) setLastSuccessAt(new Date(success));
+      setSourcesActuallyRan(discoveryEngine.getSourcesActuallyRan());
 
       if (event.status === 'COMPLETED' || event.status === 'COMPLETED_WITH_ERRORS') {
         const lastRun = discoveryEngine.getLastCompletedRun();
@@ -239,10 +259,15 @@ export function useJobFeed() {
   }, [profile, refreshState]);
 
   useEffect(() => {
-    refreshState();
-    if (jobFeedStore.getPublishedFeedItems().length === 0 && !discoveryEngine.isDiscoveryRunning()) {
-      handleRunDiscovery();
-    }
+    let isCancelled = false;
+
+    jobFeedStore.whenHydrated().then(() => {
+      if (isCancelled) return;
+      refreshState();
+      if (jobFeedStore.getPublishedFeedItems().length === 0 && !discoveryEngine.isDiscoveryRunning()) {
+        handleRunDiscovery();
+      }
+    });
 
     // Register visibility-aware 2-minute background refresh with unmount cleanup
     const AUTO_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
@@ -252,7 +277,10 @@ export function useJobFeed() {
       () => handleSilentRefresh()
     );
 
-    return () => unregister();
+    return () => {
+      isCancelled = true;
+      unregister();
+    };
   }, [refreshState, handleRunDiscovery, handleSilentRefresh]);
 
   const handleImportJob = useCallback(
@@ -415,6 +443,9 @@ export function useJobFeed() {
     databaseTabCounts,
     runHistory: discoveryEngine.getRunHistory(),
     lastUpdated,
+    lastAttemptAt,
+    lastSuccessAt,
+    sourcesActuallyRan,
     lastScanResult,
     stats,
     runDiscovery: handleRunDiscovery,

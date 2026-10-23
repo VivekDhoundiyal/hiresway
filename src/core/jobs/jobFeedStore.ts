@@ -54,6 +54,14 @@ export class JobFeedStore {
   private listeners: Set<() => void> = new Set();
   private persistTimer: any = null;
 
+  // Hydration & Persistence State Observability
+  private isHydrated = false;
+  private isHydrating = false;
+  private hydrationPromise: Promise<void> | null = null;
+  private lastPersistTimestamp: string | null = null;
+  private lastPersistError: string | null = null;
+  private dirtyItemIds: Set<string> = new Set();
+
   // Secondary indexes for deduplication
   private urlIndex: Map<string, string> = new Map();
   private externalIdIndex: Map<string, string> = new Map();
@@ -62,7 +70,9 @@ export class JobFeedStore {
 
   constructor() {
     this.loadFromStorage();
-    this.hydrateFromIndexedDb().catch(() => {});
+    this.hydrationPromise = this.hydrateFromIndexedDb().catch((err) => {
+      this.lastPersistError = err instanceof Error ? err.message : 'Hydration failed';
+    });
   }
 
   private getStorage(): Storage | null {
@@ -204,25 +214,52 @@ export class JobFeedStore {
   }
 
   private async hydrateFromIndexedDb(): Promise<void> {
+    this.isHydrating = true;
     try {
       const persisted = await persistentStorageEngine.getAll<FeedItem>('job_feed_items');
       if (persisted && persisted.length > 0) {
-        let addedCount = 0;
+        let changed = false;
         for (const item of persisted) {
           if (item && item.id && item.job) {
-            if (!this.feedItems.has(item.id)) {
+            const existing = this.feedItems.get(item.id);
+            if (!existing) {
               this.feedItems.set(item.id, item);
               this.indexItem(item);
-              addedCount++;
+              changed = true;
+            } else {
+              // Authoritative IndexedDB merge: restore full rich fields without losing in-flight user actions
+              const merged: FeedItem = {
+                ...item,
+                first_viewed_at: existing.first_viewed_at || item.first_viewed_at,
+                saved_to_database_at: existing.saved_to_database_at || item.saved_to_database_at,
+                dismissed_at: existing.dismissed_at || item.dismissed_at,
+                is_pending: existing.is_pending !== undefined ? existing.is_pending : item.is_pending,
+                job: {
+                  ...item.job,
+                  ...existing.job,
+                  description: item.job.description || existing.job.description,
+                  is_viewed: existing.job.is_viewed || item.job.is_viewed,
+                  is_saved: existing.job.is_saved || item.job.is_saved,
+                  lifecycleState: existing.job.lifecycleState || item.job.lifecycleState,
+                },
+              };
+              this.feedItems.set(item.id, merged);
+              this.indexItem(merged);
+              changed = true;
             }
           }
         }
-        if (addedCount > 0) {
+        if (changed) {
           this.notify();
         }
       }
-    } catch (e) {
+      this.isHydrated = true;
+      this.lastPersistError = null;
+    } catch (e: any) {
+      this.lastPersistError = e instanceof Error ? e.message : 'IndexedDB hydration failed';
       console.warn('JobFeedStore: failed to hydrate from IndexedDB:', e);
+    } finally {
+      this.isHydrating = false;
     }
   }
 
@@ -237,12 +274,46 @@ export class JobFeedStore {
   }
 
   private executePersist(): void {
+    // If initial hydration is still in flight, defer full persist to prevent overwriting with partial in-memory data
+    if (!this.isHydrated && this.isHydrating) {
+      this.whenHydrated().then(() => this.executePersist());
+      return;
+    }
+
+    // Targeted dirty update when only a small number of items mutated
+    if (this.dirtyItemIds.size > 0 && this.dirtyItemIds.size < 20) {
+      const dirtyItems: FeedItem[] = [];
+      for (const id of this.dirtyItemIds) {
+        const item = this.feedItems.get(id);
+        if (item) dirtyItems.push(item);
+      }
+      this.dirtyItemIds.clear();
+
+      persistentStorageEngine.bulkPut('job_feed_items', dirtyItems)
+        .then(() => {
+          this.lastPersistTimestamp = new Date().toISOString();
+          this.lastPersistError = null;
+        })
+        .catch((err) => {
+          this.lastPersistError = err instanceof Error ? err.message : 'Targeted persist failed';
+          console.error('JobFeedStore: Failed to persist dirty items:', err);
+        });
+      return;
+    }
+
+    this.dirtyItemIds.clear();
     const items = Array.from(this.feedItems.values());
 
     // 1. Authoritative persistent storage in native IndexedDB (no 5MB quota limit)
-    persistentStorageEngine.bulkPut('job_feed_items', items).catch((err) => {
-      console.error('JobFeedStore: Failed to persist to IndexedDB:', err);
-    });
+    persistentStorageEngine.bulkPut('job_feed_items', items)
+      .then(() => {
+        this.lastPersistTimestamp = new Date().toISOString();
+        this.lastPersistError = null;
+      })
+      .catch((err) => {
+        this.lastPersistError = err instanceof Error ? err.message : 'Full persist failed';
+        console.error('JobFeedStore: Failed to persist to IndexedDB:', err);
+      });
 
     // 2. Compact mirror in LocalStorage (keep top 100 items with stripped heavy raw text to prevent QuotaExceededError)
     const storage = this.getStorage();
@@ -607,8 +678,6 @@ export class JobFeedStore {
 
     if (!item.first_viewed_at) {
       item.first_viewed_at = nowIso;
-      // 14-day retention strictly guaranteed from first_viewed_at
-      item.feed_expires_at = new Date(now.getTime() + VIEWED_RETENTION_MS).toISOString();
     }
 
     item.job.is_viewed = true;
@@ -620,6 +689,7 @@ export class JobFeedStore {
       item.job.match_score = matchScore;
     }
 
+    this.dirtyItemIds.add(jobId);
     this.persist();
     this.notify();
     return item;
@@ -652,6 +722,7 @@ export class JobFeedStore {
       notes,
     });
 
+    this.dirtyItemIds.add(jobId);
     this.persist();
     this.notify();
     return item;
@@ -670,6 +741,7 @@ export class JobFeedStore {
 
     jobRepository.unmarkSaved(jobId);
 
+    this.dirtyItemIds.add(jobId);
     this.persist();
     this.notify();
     return item;
@@ -688,6 +760,26 @@ export class JobFeedStore {
       (item.job as any).rejectionReason = reason as any;
     }
 
+    this.dirtyItemIds.add(jobId);
+    this.persist();
+    this.notify();
+    return item;
+  }
+
+  /**
+   * Restores a dismissed or hidden job back into active feed.
+   * Does NOT reset the original discovery timestamp or the 14-day retention cycle.
+   */
+  public undismissJob(jobId: string): FeedItem | undefined {
+    const item = this.feedItems.get(jobId);
+    if (!item) return undefined;
+
+    item.dismissed_at = undefined;
+    if (item.job.lifecycleState === 'REJECTED' || item.job.lifecycleState === 'EXPIRED') {
+      item.job.lifecycleState = item.saved_to_database_at ? 'SAVED' : 'IN_FEED';
+    }
+
+    this.dirtyItemIds.add(jobId);
     this.persist();
     this.notify();
     return item;
@@ -708,6 +800,7 @@ export class JobFeedStore {
     // Applied jobs belong in the permanent Job Database
     jobRepository.markApplied(jobId, notes);
 
+    this.dirtyItemIds.add(jobId);
     this.persist();
     this.notify();
     return item;
@@ -779,6 +872,30 @@ export class JobFeedStore {
     }
     persistentStorageEngine.clear('job_feed_items').catch(() => {});
     this.notify();
+  }
+
+  public isStoreHydrated(): boolean {
+    return this.isHydrated;
+  }
+
+  public whenHydrated(): Promise<void> {
+    return this.hydrationPromise || Promise.resolve();
+  }
+
+  public getPersistenceStatus(): {
+    isHydrated: boolean;
+    isHydrating: boolean;
+    lastPersistTimestamp: string | null;
+    lastPersistError: string | null;
+    itemCount: number;
+  } {
+    return {
+      isHydrated: this.isHydrated,
+      isHydrating: this.isHydrating,
+      lastPersistTimestamp: this.lastPersistTimestamp,
+      lastPersistError: this.lastPersistError,
+      itemCount: this.feedItems.size,
+    };
   }
 
   public getItemById(jobId: string): FeedItem | undefined {

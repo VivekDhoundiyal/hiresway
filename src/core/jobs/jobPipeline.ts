@@ -665,11 +665,11 @@ export function normalizeRawDiscoveredJob(
           salary_source_excerpt: salaryTruth.evidence,
           salary_source_url: raw.jobUrl,
           salary_verified_at: salaryTruth.verifiedAt || new Date().toISOString(),
-          currency: salaryTruth.currency || 'USD',
+          currency: salaryTruth.currency,
           min: salaryTruth.min,
           max: salaryTruth.max,
           rawText: salaryTruth.rawText,
-          period: salaryTruth.period || 'annual',
+          period: salaryTruth.period || 'not_disclosed',
         };
 
   const remoteEligibility = remoteEligibilityEngine.classify({

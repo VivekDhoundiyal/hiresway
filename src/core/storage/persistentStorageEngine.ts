@@ -180,22 +180,14 @@ class PersistentStorageEngine {
   }
 
   /**
-   * Saves or updates a single item.
+   * Saves or updates a single item with direct IndexedDB structured clone.
    */
-  public async set<T extends { id: string }>(storeName: StoreName, item: T): Promise<void> {
+  public async putItem<T extends { id: string }>(storeName: StoreName, item: T): Promise<void> {
     const mem = getMemoryStore(storeName);
-    mem.set(item.id, item);
-
-    // Write to LocalStorage mirror (safe compact mirror)
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const all = Array.from(mem.values());
-        // Mirror up to 500 items in LocalStorage to stay safely under 5MB quota
-        if (all.length <= 500) {
-          localStorage.setItem(`careeros_idb_all_${storeName}`, JSON.stringify(all));
-        }
-      }
-    } catch {}
+    const id = item.id || (item as any).company_id;
+    if (id) {
+      mem.set(id, item);
+    }
 
     const db = await this.getDB();
     if (!db) return;
@@ -204,9 +196,7 @@ class PersistentStorageEngine {
       try {
         const tx = db.transaction(storeName, 'readwrite');
         const store = tx.objectStore(storeName);
-        const plain = JSON.parse(JSON.stringify(item));
-        if (!plain.id && item.id) plain.id = item.id;
-        store.put(plain);
+        store.put(item);
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
         tx.onabort = () => reject(tx.error);
@@ -217,8 +207,15 @@ class PersistentStorageEngine {
   }
 
   /**
+   * Saves or updates a single item.
+   */
+  public async set<T extends { id: string }>(storeName: StoreName, item: T): Promise<void> {
+    return this.putItem(storeName, item);
+  }
+
+  /**
    * Atomically commits a bulk list of records in a single transaction.
-   * Guarantees all items are written.
+   * Guarantees all items are written with zero redundant serialization.
    */
   public async bulkPut<T extends { id: string }>(
     storeName: StoreName,
@@ -235,15 +232,15 @@ class PersistentStorageEngine {
       }
     }
 
-    // Mirror to LocalStorage if safe
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const all = Array.from(mem.values());
-        if (all.length <= 500) {
+    // Mirror to LocalStorage ONLY for small configuration stores (not high-volume job stores)
+    if (storeName === 'metadata' || storeName === 'sources') {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          const all = Array.from(mem.values());
           localStorage.setItem(`careeros_idb_all_${storeName}`, JSON.stringify(all));
         }
-      }
-    } catch {}
+      } catch {}
+    }
 
     const db = await this.getDB();
     if (!db) {
@@ -259,9 +256,7 @@ class PersistentStorageEngine {
           if (item) {
             const id = item.id || (item as any).company_id;
             if (id) {
-              const plain = JSON.parse(JSON.stringify(item));
-              plain.id = id;
-              store.put(plain);
+              store.put(item);
             }
           }
         }

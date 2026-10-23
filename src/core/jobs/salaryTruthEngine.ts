@@ -53,17 +53,19 @@ export class SalaryTruthEngine {
     ) {
       let min = input.salaryMin || input.salaryMax || 0;
       let max = input.salaryMax || min;
-      const currency = (input.salaryCurrency || 'USD').toUpperCase();
-      const period: SalaryPeriod = input.salaryPeriod || (min < 500 ? 'hourly' : 'annual');
+      const currency = input.salaryCurrency ? input.salaryCurrency.toUpperCase() : undefined;
+      const period: SalaryPeriod = input.salaryPeriod || 'not_disclosed';
 
       // Reject non-realistic values (e.g. $1 or $0)
       const isRealistic =
-        (period === 'hourly' && min >= 5 && max <= 500) ||
-        (period === 'annual' && currency === 'INR' && (min >= 100000 || (min >= 1 && min <= 150))) || // 1 LPA to 150 LPA
-        (period === 'annual' && currency !== 'INR' && min >= 10000 && max <= 3000000);
+        min > 0 &&
+        max >= min &&
+        ((period === 'hourly' && min >= 5 && max <= 500) ||
+          (currency === 'INR' && (min >= 100000 || (min >= 1 && min <= 150))) || // 1 LPA to 150 LPA
+          (currency !== 'INR' && min >= 5 && max <= 5000000));
 
       if (isRealistic) {
-        if (currency === 'INR' && min < 150) {
+        if (currency === 'INR' && min <= 150 && max <= 150) {
           min = min * 100000;
           max = max * 100000;
         }
@@ -105,12 +107,13 @@ export class SalaryTruthEngine {
       // Minimum realistic threshold for annual INR is ₹100,000 (1 LPA)
       if (min >= 100000) {
         const rawText = inrMatch[0].trim();
+        const period: SalaryPeriod = /mo|month/i.test(inrMatch[0]) ? 'monthly' : 'annual';
         return {
           status: 'EMPLOYER_STATED',
           min,
           max: max || min,
           currency: 'INR',
-          period: 'annual',
+          period,
           rawText,
           sourceUrl,
           evidence: `Original job description text: "${rawText}"`,
@@ -121,7 +124,7 @@ export class SalaryTruthEngine {
 
     // 3. Parse USD patterns (e.g. $100,000 - $130,000, $120k - $160k, $60/hr)
     const usdMatch = textToScan.match(
-      /(?:\$|USD)\s*([\d,.]+)(?:k)?(?:\s*[-–to]+\s*(?:\$|USD)?\s*([\d,.]+)(?:k)?)?(?:\s*(?:\/|\bper\s+)?(hr|hour|yr|year|annual|annually))?/i
+      /(?:\$|USD)\s*([\d,.]+)(?:k)?(?:\s*[-–to]+\s*(?:\$|USD)?\s*([\d,.]+)(?:k)?)?(?:\s*(?:\/|\bper\s+)?(hr|hour|yr|year|annual|annually|mo|month))?/i
     );
     if (usdMatch && usdMatch[1] && !this.isFundingOrMetric(usdMatch[0])) {
       let min = parseFloat(usdMatch[1].replace(/,/g, ''));
@@ -135,13 +138,18 @@ export class SalaryTruthEngine {
 
       const periodStr = usdMatch[3]?.toLowerCase();
       const isHourlyDeclared = periodStr === 'hr' || periodStr === 'hour';
-      const period: SalaryPeriod =
-        isHourlyDeclared || (min < 500 && min >= 5) ? 'hourly' : 'annual';
+      const isAnnualDeclared = periodStr === 'yr' || periodStr === 'year' || periodStr === 'annual' || periodStr === 'annually';
+      const isMonthlyDeclared = periodStr === 'mo' || periodStr === 'month';
+      const period: SalaryPeriod = isHourlyDeclared
+        ? 'hourly'
+        : isAnnualDeclared
+        ? 'annual'
+        : isMonthlyDeclared
+        ? 'monthly'
+        : 'not_disclosed';
 
       // Strict Validation: Eradicate "$1" or false metrics
-      const isValid =
-        (period === 'hourly' && min >= 5 && (max || min) <= 500) ||
-        (period === 'annual' && min >= 10000 && (max || min) <= 3000000);
+      const isValid = min >= 5 && (max || min) <= 3000000;
 
       if (isValid) {
         const rawText = usdMatch[0].trim();
@@ -161,7 +169,7 @@ export class SalaryTruthEngine {
 
     // 4. Parse EUR patterns (e.g. €80,000 - €100,000, €70k)
     const eurMatch = textToScan.match(
-      /(?:€|EUR)\s*([\d,.]+)(?:k)?(?:\s*[-–to]+\s*(?:€|EUR)?\s*([\d,.]+)(?:k)?)?/i
+      /(?:€|EUR)\s*([\d,.]+)(?:k)?(?:\s*[-–to]+\s*(?:€|EUR)?\s*([\d,.]+)(?:k)?)?(?:\s*(?:\/|\bper\s+)?(hr|hour|yr|year|annual|annually|mo|month))?/i
     );
     if (eurMatch && eurMatch[1] && !this.isFundingOrMetric(eurMatch[0])) {
       let min = parseFloat(eurMatch[1].replace(/,/g, ''));
@@ -169,14 +177,22 @@ export class SalaryTruthEngine {
       if (eurMatch[0].toLowerCase().includes('k') && min < 1000) min *= 1000;
       if (max && eurMatch[0].toLowerCase().includes('k') && max < 1000) max *= 1000;
 
-      if (min >= 10000) {
+      const periodStr = eurMatch[3]?.toLowerCase();
+      const period: SalaryPeriod =
+        periodStr === 'hr' || periodStr === 'hour'
+          ? 'hourly'
+          : periodStr === 'yr' || periodStr === 'year' || periodStr === 'annual' || periodStr === 'annually'
+          ? 'annual'
+          : 'not_disclosed';
+
+      if (min >= 5) {
         const rawText = eurMatch[0].trim();
         return {
           status: 'EMPLOYER_STATED',
           min,
           max: max || min,
           currency: 'EUR',
-          period: 'annual',
+          period,
           rawText,
           sourceUrl,
           evidence: `Original job description text: "${rawText}"`,
@@ -187,7 +203,7 @@ export class SalaryTruthEngine {
 
     // 5. Parse GBP patterns (e.g. £65,000 - £85,000, £70k)
     const gbpMatch = textToScan.match(
-      /(?:£|GBP)\s*([\d,.]+)(?:k)?(?:\s*[-–to]+\s*(?:£|GBP)?\s*([\d,.]+)(?:k)?)?/i
+      /(?:£|GBP)\s*([\d,.]+)(?:k)?(?:\s*[-–to]+\s*(?:£|GBP)?\s*([\d,.]+)(?:k)?)?(?:\s*(?:\/|\bper\s+)?(hr|hour|yr|year|annual|annually|mo|month))?/i
     );
     if (gbpMatch && gbpMatch[1] && !this.isFundingOrMetric(gbpMatch[0])) {
       let min = parseFloat(gbpMatch[1].replace(/,/g, ''));
@@ -195,14 +211,22 @@ export class SalaryTruthEngine {
       if (gbpMatch[0].toLowerCase().includes('k') && min < 1000) min *= 1000;
       if (max && gbpMatch[0].toLowerCase().includes('k') && max < 1000) max *= 1000;
 
-      if (min >= 10000) {
+      const periodStr = gbpMatch[3]?.toLowerCase();
+      const period: SalaryPeriod =
+        periodStr === 'hr' || periodStr === 'hour'
+          ? 'hourly'
+          : periodStr === 'yr' || periodStr === 'year' || periodStr === 'annual' || periodStr === 'annually'
+          ? 'annual'
+          : 'not_disclosed';
+
+      if (min >= 5) {
         const rawText = gbpMatch[0].trim();
         return {
           status: 'EMPLOYER_STATED',
           min,
           max: max || min,
           currency: 'GBP',
-          period: 'annual',
+          period,
           rawText,
           sourceUrl,
           evidence: `Original job description text: "${rawText}"`,
@@ -225,9 +249,25 @@ export class SalaryTruthEngine {
   /**
    * Helper: Formats a min-max range into readable string
    */
-  private formatRange(min: number, max: number, currency: string, period: SalaryPeriod): string {
-    const sym = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
-    const periodSuffix = period === 'hourly' ? '/hr' : '';
+  private formatRange(
+    min: number,
+    max: number,
+    currency?: string,
+    period?: SalaryPeriod
+  ): string {
+    const sym =
+      currency === 'INR'
+        ? '₹'
+        : currency === 'EUR'
+        ? '€'
+        : currency === 'GBP'
+        ? '£'
+        : currency === 'USD'
+        ? '$'
+        : currency
+        ? `${currency} `
+        : '';
+    const periodSuffix = period === 'hourly' ? '/hr' : period === 'annual' ? '/yr' : period === 'monthly' ? '/mo' : '';
 
     if (currency === 'INR') {
       const minL = (min / 100000).toFixed(0);
@@ -235,9 +275,25 @@ export class SalaryTruthEngine {
       return minL === maxL ? `₹${minL}L${periodSuffix}` : `₹${minL}L–₹${maxL}L${periodSuffix}`;
     }
 
-    const minK = Math.round(min / 1000);
-    const maxK = Math.round(max / 1000);
-    return minK === maxK ? `${sym}${minK}k${periodSuffix}` : `${sym}${minK}k–${sym}${maxK}k${periodSuffix}`;
+    if (
+      currency &&
+      min >= 1000 &&
+      max >= 1000 &&
+      (currency === 'USD' || currency === 'EUR' || currency === 'GBP' || currency === 'CAD' || currency === 'AUD')
+    ) {
+      const minK = Math.round(min / 1000);
+      const maxK = Math.round(max / 1000);
+      return minK === maxK ? `${sym}${minK}k${periodSuffix}` : `${sym}${minK}k–${sym}${maxK}k${periodSuffix}`;
+    }
+
+    if (!currency) {
+      const base = min === max ? min.toLocaleString() : `${min.toLocaleString()}–${max.toLocaleString()}`;
+      return `${base} (Currency not disclosed)${periodSuffix}`;
+    }
+
+    return min === max
+      ? `${sym}${min.toLocaleString()}${periodSuffix}`
+      : `${sym}${min.toLocaleString()}–${sym}${max.toLocaleString()}${periodSuffix}`;
   }
 
   /**
@@ -266,7 +322,7 @@ export class SalaryTruthEngine {
     }
 
     if (st.status === 'EMPLOYER_STATED' || st.status === 'STRUCTURED_SOURCE_STATED') {
-      const displayRange = st.rawText || (st.min && st.max ? this.formatRange(st.min, st.max, st.currency || 'USD', st.period || 'annual') : '');
+      const displayRange = st.rawText || (st.min && st.max ? this.formatRange(st.min, st.max, st.currency, st.period) : '');
       if (displayRange) {
         return {
           text: displayRange.includes('Employer stated') ? displayRange : `${displayRange} · Employer stated`,
@@ -291,7 +347,7 @@ export class SalaryTruthEngine {
     }
 
     if (jc.min && jc.max) {
-      const formatted = this.formatRange(jc.min, jc.max, jc.currency || 'USD', jc.period || 'annual');
+      const formatted = this.formatRange(jc.min, jc.max, jc.currency, jc.period);
       return {
         text: `${formatted} · Employer stated`,
         isDisclosed: true,

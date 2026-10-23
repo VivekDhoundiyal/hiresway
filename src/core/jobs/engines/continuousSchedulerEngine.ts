@@ -416,6 +416,11 @@ export class ContinuousSchedulerEngine {
 
   private restoreFromStorage(): void {
     try {
+      this.isRunning = false;
+      if (this.timer) {
+        clearInterval(this.timer);
+        this.timer = null;
+      }
       if (typeof localStorage === 'undefined') return;
       const stored = localStorage.getItem(SCHEDULER_STORAGE_KEY);
       if (!stored) return;
@@ -424,7 +429,9 @@ export class ContinuousSchedulerEngine {
         this.scheduleMap = new Map(parsed.entries);
       }
       this.lastCycleTimestamp = parsed.lastCycle;
-      // Do not auto-resume running state immediately to give UI control
+      // Background browser timers do not survive page reloads or restarts.
+      // Must explicitly be restarted via startLoop() or resumeLoop().
+      this.isRunning = false;
     } catch {}
   }
 }

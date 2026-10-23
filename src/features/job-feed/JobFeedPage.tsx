@@ -97,6 +97,9 @@ export const JobFeedPage: React.FC = () => {
     applyPendingNewJobs,
     databaseTabCounts,
     lastUpdated,
+    lastAttemptAt,
+    lastSuccessAt,
+    sourcesActuallyRan,
     runDiscovery,
     continuousDiscoveryState,
     continuousDiscoveryError,
@@ -1394,9 +1397,32 @@ export const JobFeedPage: React.FC = () => {
               <span>Scanning live sources...</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1 text-xs text-gray-400">
+            <div
+              className="flex items-center gap-1.5 text-xs text-gray-500 cursor-help"
+              title={
+                sourcesActuallyRan.length > 0
+                  ? `Last attempt: ${lastAttemptAt ? lastAttemptAt.toLocaleString() : 'N/A'}\nLast success: ${lastSuccessAt ? lastSuccessAt.toLocaleString() : 'N/A'}\nSources executed (${sourcesActuallyRan.length}):\n${sourcesActuallyRan
+                      .slice(0, 10)
+                      .map((s: any) => `• ${s.sourceName || s.sourceId}: ${s.status} (${s.jobsDiscovered || 0} jobs)`)
+                      .join('\n')}${sourcesActuallyRan.length > 10 ? '\n...and more' : ''}`
+                  : undefined
+              }
+            >
               <Clock className="h-3.5 w-3.5 text-gray-400" />
-              <span>Updated {formatLastUpdated(lastUpdated)}</span>
+              <span>
+                {lastAttemptAt && lastSuccessAt && Math.abs(lastAttemptAt.getTime() - lastSuccessAt.getTime()) > 60000 ? (
+                  <>
+                    Checked {formatLastUpdated(lastAttemptAt)} (Success {formatLastUpdated(lastSuccessAt)})
+                  </>
+                ) : (
+                  <>Updated {formatLastUpdated(lastSuccessAt || lastAttemptAt || lastUpdated)}</>
+                )}
+                {sourcesActuallyRan.length > 0 && (
+                  <span className="ml-1 text-[11px] text-gray-400">
+                    ({sourcesActuallyRan.length} sources ran)
+                  </span>
+                )}
+              </span>
             </div>
           )}
 

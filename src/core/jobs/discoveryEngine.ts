@@ -29,6 +29,7 @@ import { jobFeedStore } from './jobFeedStore';
 const ACTIVE_RUN_STORAGE_KEY = 'careeros_active_discovery_run_v2';
 const LAST_RUN_STORAGE_KEY = 'careeros_last_discovery_run_v2';
 const RUN_HISTORY_STORAGE_KEY = 'careeros_discovery_history_v2';
+const LAST_DISCOVERY_TIMESTAMPS_KEY = 'careeros_last_discovery_timestamps_v2';
 
 export type ContinuousDiscoveryState = 'DISCOVER' | 'DISCOVERING' | 'PAUSED' | 'ERROR';
 
@@ -67,6 +68,8 @@ export class JobDiscoveryEngine {
   private errorMessage: string | null = null;
   private scheduledTimer: any = null;
   private stateListeners: Set<(state: ContinuousDiscoveryState) => void> = new Set();
+  private lastAttemptAt: string | null = null;
+  private lastSuccessAt: string | null = null;
 
   constructor() {
     this.reconnectOrRecover();
@@ -77,6 +80,17 @@ export class JobDiscoveryEngine {
    * Guarantees zero false RUNNING reporting when workers are not running in memory.
    */
   public reconnectOrRecover(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const tsStored = localStorage.getItem(LAST_DISCOVERY_TIMESTAMPS_KEY);
+        if (tsStored) {
+          const parsed = JSON.parse(tsStored);
+          this.lastAttemptAt = parsed.lastAttemptAt || null;
+          this.lastSuccessAt = parsed.lastSuccessAt || null;
+        }
+      }
+    } catch {}
+
     try {
       if (typeof localStorage === 'undefined') return;
       const stored = localStorage.getItem(ACTIVE_RUN_STORAGE_KEY);
@@ -93,18 +107,51 @@ export class JobDiscoveryEngine {
         run.durationMs = elapsed;
         run.errorMessage = 'Previous run settled upon session recovery';
         this.saveRunHistory(run);
-        localStorage.removeItem(ACTIVE_RUN_STORAGE_KEY);
-        this.activeRun = null;
-        this.isRunning = false;
-        this.state = 'DISCOVER';
-      } else {
-        this.activeRun = run;
-        this.isRunning = false;
-        this.state = 'DISCOVER';
       }
+      localStorage.removeItem(ACTIVE_RUN_STORAGE_KEY);
+      this.activeRun = null;
+      this.isRunning = false;
+      this.state = 'DISCOVER';
     } catch (err) {
       console.warn('Failed to recover discovery run state:', err);
     }
+  }
+
+  private saveTimestamps(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(
+          LAST_DISCOVERY_TIMESTAMPS_KEY,
+          JSON.stringify({
+            lastAttemptAt: this.lastAttemptAt,
+            lastSuccessAt: this.lastSuccessAt,
+          })
+        );
+      }
+    } catch {}
+  }
+
+  public getLastAttemptAt(): string | null {
+    if (this.lastAttemptAt) return this.lastAttemptAt;
+    const lastRun = this.getLastCompletedRun();
+    return lastRun?.startedAt || null;
+  }
+
+  public getLastSuccessAt(): string | null {
+    if (this.lastSuccessAt) return this.lastSuccessAt;
+    const lastRun = this.getLastCompletedRun();
+    if (lastRun && (lastRun.status === 'COMPLETED' || lastRun.status === 'COMPLETED_WITH_ERRORS')) {
+      return lastRun.completedAt || lastRun.startedAt || null;
+    }
+    return null;
+  }
+
+  public getSourcesActuallyRan(): any[] {
+    if (this.activeRun && this.activeRun.sourceBreakdown && this.activeRun.sourceBreakdown.length > 0) {
+      return [...this.activeRun.sourceBreakdown];
+    }
+    const last = this.getLastCompletedRun();
+    return last?.sourceBreakdown ? [...last.sourceBreakdown] : [];
   }
 
   public getActiveRun(): DiscoveryRunRecord | null {
@@ -376,6 +423,8 @@ export class JobDiscoveryEngine {
     const startTime = Date.now();
 
     this.isRunning = true;
+    this.lastAttemptAt = startedAt;
+    this.saveTimestamps();
     this.abortController = new AbortController();
     sourceOrchestrator.setProcessing(true);
 
@@ -688,6 +737,9 @@ export class JobDiscoveryEngine {
         ? 'COMPLETED_WITH_ERRORS'
         : 'COMPLETED';
 
+      this.lastSuccessAt = runRecord.completedAt;
+      this.saveTimestamps();
+
       discoveryLedgerEngine.setStatus(
         runRecord.status === 'COMPLETED' ? 'COMPLETED' : 'ERROR',
         `Discovery complete: ${runRecord.queriedSourceCount} checked, ${runRecord.rawJobsDiscovered} jobs found.`
@@ -759,6 +811,7 @@ export class JobDiscoveryEngine {
         this.watchdogTimer = null;
       }
       this.isRunning = false;
+      this.activeRun = null;
       this.inFlightRunPromise = null;
       this.abortController = null;
       sourceOrchestrator.setProcessing(false);

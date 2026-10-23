@@ -396,13 +396,17 @@ export class ExcelImportService {
         });
       }
 
-      const salaryCurrency = (cleanRow['salary_currency'] || 'INR').toUpperCase();
-      const salaryPeriodRaw = (cleanRow['salary_period'] || 'Annual').toLowerCase();
-      let salaryPeriod: SalaryPeriod = 'yearly';
-      if (salaryPeriodRaw.includes('month')) {
-        salaryPeriod = 'monthly';
-      } else if (salaryPeriodRaw.includes('hour')) {
-        salaryPeriod = 'hourly';
+      const salaryCurrency = cleanRow['salary_currency'] ? cleanRow['salary_currency'].trim().toUpperCase() : undefined;
+      const salaryPeriodRaw = cleanRow['salary_period'] ? cleanRow['salary_period'].toLowerCase() : undefined;
+      let salaryPeriod: SalaryPeriod = 'not_disclosed';
+      if (salaryPeriodRaw) {
+        if (salaryPeriodRaw.includes('month')) {
+          salaryPeriod = 'monthly';
+        } else if (salaryPeriodRaw.includes('hour')) {
+          salaryPeriod = 'hourly';
+        } else if (salaryPeriodRaw.includes('year') || salaryPeriodRaw.includes('annual')) {
+          salaryPeriod = 'yearly';
+        }
       }
 
       // Posting Date
@@ -540,14 +544,18 @@ export class ExcelImportService {
             period: salaryPeriod,
             rawText:
               salaryMin && salaryMax
-                ? `${salaryCurrency === 'INR' ? '₹' : salaryCurrency === 'EUR' ? '€' : '$'}${salaryMin.toLocaleString()} – ${salaryCurrency === 'INR' ? '₹' : salaryCurrency === 'EUR' ? '€' : '$'}${salaryMax.toLocaleString()}`
+                ? salaryCurrency
+                  ? `${salaryCurrency === 'INR' ? '₹' : salaryCurrency === 'EUR' ? '€' : salaryCurrency === 'GBP' ? '£' : '$'}${salaryMin.toLocaleString()} – ${salaryCurrency === 'INR' ? '₹' : salaryCurrency === 'EUR' ? '€' : '$'}${salaryMax.toLocaleString()}`
+                  : `${salaryMin.toLocaleString()} – ${salaryMax.toLocaleString()} (Currency not disclosed)`
                 : undefined,
           },
           salary_status: salaryMin || salaryMax ? 'disclosed' : 'not_disclosed',
           salary_source: 'user_imported',
           salary_raw_text:
             salaryMin && salaryMax
-              ? `${salaryCurrency === 'INR' ? '₹' : salaryCurrency === 'EUR' ? '€' : '$'}${salaryMin.toLocaleString()} – ${salaryCurrency === 'INR' ? '₹' : salaryCurrency === 'EUR' ? '€' : '$'}${salaryMax.toLocaleString()}`
+              ? salaryCurrency
+                ? `${salaryCurrency === 'INR' ? '₹' : salaryCurrency === 'EUR' ? '€' : salaryCurrency === 'GBP' ? '£' : '$'}${salaryMin.toLocaleString()} – ${salaryCurrency === 'INR' ? '₹' : salaryCurrency === 'EUR' ? '€' : '$'}${salaryMax.toLocaleString()}`
+                : `${salaryMin.toLocaleString()} – ${salaryMax.toLocaleString()} (Currency not disclosed)`
               : undefined,
           currency_conversion:
             (salaryMin || salaryMax) && salaryCurrency !== 'INR'
