@@ -18,14 +18,23 @@ export const ManualSourceModal: React.FC<ManualSourceModalProps> = ({
   company,
   onSaveManualSource,
 }) => {
-  if (!company) return null;
-
-  const [careerUrl, setCareerUrl] = useState(company.careersUrl || `https://${company.officialDomain}/careers`);
-  const [platform, setPlatform] = useState<CareersPlatformType>(company.careersPlatform || 'custom');
+  const [careerUrl, setCareerUrl] = useState(company?.careersUrl || (company ? `https://${company.officialDomain}/careers` : ''));
+  const [platform, setPlatform] = useState<CareersPlatformType>(company?.careersPlatform || 'custom');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle');
   const [verifyMessage, setVerifyMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  React.useEffect(() => {
+    if (company) {
+      setCareerUrl(company.careersUrl || `https://${company.officialDomain}/careers`);
+      setPlatform(company.careersPlatform || 'custom');
+      setVerifyStatus('idle');
+      setVerifyMessage('');
+    }
+  }, [company]);
+
+  if (!company) return null;
 
   const handleTestEndpoint = async () => {
     if (!careerUrl.trim().startsWith('http')) {

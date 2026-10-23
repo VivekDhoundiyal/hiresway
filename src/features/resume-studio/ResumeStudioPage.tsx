@@ -3,11 +3,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/core/profile';
 import {
   generateTailoredResume,
-  mockJobCatalog,
   TailoredResumeBlueprint,
   JobPosting,
   jobRepository,
   opportunityToJobPosting,
+  createTargetJobFromProfile,
 } from '@/core/intelligence';
 import { Card } from '@/components/card';
 import { Typography } from '@/components/typography';
@@ -43,22 +43,24 @@ export const ResumeStudioPage: React.FC = () => {
       }
     }
 
-    if (combined.length > 0) {
-      return combined.map(opportunityToJobPosting);
-    }
-    return mockJobCatalog;
+    return combined.map(opportunityToJobPosting);
   }, [queryJobId]);
 
+  const fallbackJob: JobPosting = useMemo(
+    () => createTargetJobFromProfile(profile),
+    [profile]
+  );
+
   const [selectedJobId, setSelectedJobId] = useState<string>(
-    queryJobId || (availableJobs.length > 0 ? availableJobs[0].id : '')
+    queryJobId || (availableJobs.length > 0 ? availableJobs[0].id : 'profile-target-role')
   );
 
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'tailored' | 'canonical'>('tailored');
 
   const selectedJob = useMemo(() => {
-    return availableJobs.find((j) => j.id === selectedJobId) || availableJobs[0];
-  }, [availableJobs, selectedJobId]);
+    return availableJobs.find((j) => j.id === selectedJobId) || availableJobs[0] || fallbackJob;
+  }, [availableJobs, selectedJobId, fallbackJob]);
 
   const blueprint: TailoredResumeBlueprint = useMemo(() => {
     return generateTailoredResume(profile, selectedJob);

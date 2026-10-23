@@ -1314,9 +1314,14 @@ export class WorkableATSConnector implements JobSourceConnector {
       }
     }
 
-    this.status = 'active';
-    this.lastSuccessAt = new Date().toISOString();
-    this.jobsDiscoveredCount = allDiscovered.length;
+    if (failureCount > 0 && allDiscovered.length === 0) {
+      this.status = 'failed';
+      this.errorMessage = `Failed to query ${failureCount} Workable boards`;
+    } else {
+      this.status = failureCount > 0 ? 'degraded' : 'active';
+      this.lastSuccessAt = new Date().toISOString();
+      this.jobsDiscoveredCount = allDiscovered.length;
+    }
     return allDiscovered;
   }
 }

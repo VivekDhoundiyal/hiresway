@@ -27,7 +27,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onItemClick })
       const next = !prev;
       try {
         localStorage.setItem('careeros_copilot_collapsed', String(next));
-      } catch {}
+      } catch {
+        // ignore localStorage errors
+      }
       return next;
     });
   };

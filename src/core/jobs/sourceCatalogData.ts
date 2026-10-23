@@ -235,7 +235,7 @@ export function generate1248SourceCatalog(): JobSourceRegistryEntry[] {
     let eligibilityStatus: 'eligible' | 'already_active' | 'unavailable' | 'requires_configuration' | 'unsupported' = 'eligible';
     let ineligibilityReason: string | undefined = undefined;
     let sourceHealth: 'healthy' | 'degraded' | 'failed' | 'never_checked' = 'healthy';
-    let activeStatus = i < 610;
+    const activeStatus = i < 610;
     let lastSuccess = pastHour;
     let lastError: string | undefined = undefined;
 

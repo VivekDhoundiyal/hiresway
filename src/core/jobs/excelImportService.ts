@@ -750,7 +750,7 @@ export class ExcelImportService {
     });
     ws['!cols'] = colWidths;
 
-    const cleanFilename = filename.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const cleanFilename = filename.replace(/[^a-zA-Z0-9_-]/g, '_');
 
     if (format === 'xlsx') {
       const wb = XLSX.utils.book_new();

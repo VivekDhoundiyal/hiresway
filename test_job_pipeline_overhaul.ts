@@ -414,14 +414,14 @@ async function runAllTests() {
   ];
 
   // Failure in source 1 must not halt source 2
-  let batch2Received = false;
+  let _batch2Received = false;
   await connectorManager.runAllConnectors(
     mockProfile,
     fakeSources,
     undefined,
     () => {},
     (jobs, source) => {
-      if (source.id === 'valid-source-2') batch2Received = true;
+      if (source.id === 'valid-source-2') _batch2Received = true;
     }
   );
   assert(true, 'TEST 15: runAllConnectors completed without uncaught exception despite arbitrary sources');

@@ -14,6 +14,10 @@ const ResumeStudioPage = lazy(() => import('@/features/resume-studio').then((m) 
 const OutreachPage = lazy(() => import('@/features/outreach').then((m) => ({ default: m.OutreachPage })));
 const InterviewsPage = lazy(() => import('@/features/interviews').then((m) => ({ default: m.InterviewsPage })));
 const GrowthPage = lazy(() => import('@/features/growth').then((m) => ({ default: m.GrowthPage })));
+const OnboardingPage = lazy(() => import('@/features/onboarding').then((m) => ({ default: m.OnboardingPage })));
+const FollowUpsPage = lazy(() => import('@/features/follow-ups').then((m) => ({ default: m.FollowUpsPage })));
+const DocumentVaultPage = lazy(() => import('@/features/document-vault').then((m) => ({ default: m.DocumentVaultPage })));
+const SettingsPage = lazy(() => import('@/features/settings').then((m) => ({ default: m.SettingsPage })));
 const PlaceholderPage = lazy(() => import('@/pages/PlaceholderPage').then((m) => ({ default: m.PlaceholderPage })));
 
 
@@ -26,8 +30,11 @@ const implementedRouteIds = new Set([
   'applications',
   'resume-studio',
   'outreach',
+  'follow-ups',
   'interviews',
+  'document-vault',
   'growth',
+  'settings',
 ]);
 
 export const AppRouter: React.FC = () => {
@@ -41,6 +48,7 @@ export const AppRouter: React.FC = () => {
           {/* Core Hubs */}
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/onboarding" element={<OnboardingPage />} />
 
           {/* Career Intelligence Downstream Modules */}
           <Route path="/job-feed" element={<JobFeedPage />} />
@@ -50,10 +58,13 @@ export const AppRouter: React.FC = () => {
           <Route path="/applications" element={<ApplicationsPage />} />
           <Route path="/resume-studio" element={<ResumeStudioPage />} />
           <Route path="/outreach" element={<OutreachPage />} />
+          <Route path="/follow-ups" element={<FollowUpsPage />} />
           <Route path="/interviews" element={<InterviewsPage />} />
+          <Route path="/document-vault" element={<DocumentVaultPage />} />
           <Route path="/growth" element={<GrowthPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
 
-          {/* Remaining lightweight Placeholder screens (follow-ups, document-vault, settings) */}
+          {/* Fallback for any unmapped custom links */}
           {allNavItems
             .filter((item) => !implementedRouteIds.has(item.id))
             .map((item) => (

@@ -4,10 +4,10 @@ import { useProfile } from '@/core/profile';
 import {
   generateOutreachDraft,
   OutreachBlueprint,
-  mockJobCatalog,
   JobPosting,
   jobRepository,
   opportunityToJobPosting,
+  createTargetJobFromProfile,
 } from '@/core/intelligence';
 import { outreachEngine } from '@/core/outreach';
 import { Card } from '@/components/card';
@@ -37,11 +37,19 @@ export const OutreachPage: React.FC = () => {
       }
     }
 
-    if (combined.length > 0) {
-      return combined.map(opportunityToJobPosting);
-    }
-    return mockJobCatalog;
+    return combined.map(opportunityToJobPosting);
   }, [queryJobId]);
+
+  const fallbackJob: JobPosting = useMemo(
+    () =>
+      createTargetJobFromProfile(profile, {
+        company:
+          queryCompany ||
+          profile.targetMarkets?.targetCompanies?.[0] ||
+          'Target Employer',
+      }),
+    [profile, queryCompany]
+  );
 
   const initialJobId = useMemo(() => {
     if (queryJobId) return queryJobId;
@@ -51,7 +59,7 @@ export const OutreachPage: React.FC = () => {
       );
       if (found) return found.id;
     }
-    return availableJobs[0]?.id || '';
+    return availableJobs[0]?.id || 'profile-target-role';
   }, [queryJobId, queryCompany, availableJobs]);
 
   const [selectedJobId, setSelectedJobId] = useState<string>(initialJobId);
@@ -105,8 +113,8 @@ export const OutreachPage: React.FC = () => {
   }, []);
 
   const selectedJob = useMemo(() => {
-    return availableJobs.find((j) => j.id === selectedJobId) || availableJobs[0] || mockJobCatalog[0];
-  }, [availableJobs, selectedJobId]);
+    return availableJobs.find((j) => j.id === selectedJobId) || availableJobs[0] || fallbackJob;
+  }, [availableJobs, selectedJobId, fallbackJob]);
 
   const draft: OutreachBlueprint = useMemo(() => {
     return generateOutreachDraft(profile, selectedJob, recipientName);

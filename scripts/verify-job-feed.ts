@@ -139,7 +139,7 @@ console.log('✓ Fast Career Page Engine properly separates verified catalog/ATS
 
 // 7. 14-Day Feed Retention & User Action Indefinite Preservation
 console.log('\n[Test 7] Testing 14-Day Retention & User Action Preservation Rules...');
-const { jobFeedStore, FEED_RETENTION_MS } = await import('../src/core/jobs/jobFeedStore');
+const { jobFeedStore } = await import('../src/core/jobs/jobFeedStore');
 jobFeedStore.clearAll();
 
 const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
@@ -205,7 +205,7 @@ console.log('✓ 14-day retention rule verified: unacted jobs expire, user-acted
 console.log('\n[Test 8] Testing High-Volume 500 Target Companies Batch Ingestion...');
 const { targetCompaniesStore } = await import('../src/core/target-companies/targetCompanyStore');
 await targetCompaniesStore.ensureHydrated();
-const initialCompCount = targetCompaniesStore.getCompanies().length;
+const _initialCompCount = targetCompaniesStore.getCompanies().length;
 
 const bulk500 = Array.from({ length: 500 }, (_, i) => ({
   name: `Enterprise Partner ${i + 1}`,

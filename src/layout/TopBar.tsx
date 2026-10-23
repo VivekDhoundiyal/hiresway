@@ -14,6 +14,8 @@ import {
   Building2,
   Sparkles,
   Bot,
+  Users,
+  Compass,
 } from 'lucide-react';
 import { Modal } from '@/components/modal';
 import { Drawer } from '@/components/drawer';
@@ -24,6 +26,7 @@ import { Badge } from '@/components/badge';
 import { EmptyState } from '@/components/empty-state';
 import { CopilotDrawer } from '@/components/copilot/CopilotDrawer';
 import { useProfile } from '@/core/profile';
+import { AuthModal, userContextService } from '@/core/auth';
 import { useSidebar } from './useSidebar';
 import { careerSearchEngine, preferenceLearningEngine } from '@/core/jobs/engines';
 
@@ -41,6 +44,8 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'switch'>('login');
   const [searchQuery, setSearchQuery] = useState('');
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
@@ -242,11 +247,11 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span>V</span>
+                  <span>{(profile.personalInfo.fullName?.trim()?.[0] || 'C').toUpperCase()}</span>
                 )}
               </div>
               <span className="hidden sm:inline-block text-xs font-bold text-gray-800 tracking-wide">
-                {profile.personalInfo.fullName ? profile.personalInfo.fullName.split(' ')[0].toUpperCase() : 'VIVEK'}
+                {profile.personalInfo.fullName ? profile.personalInfo.fullName.trim().split(' ')[0].toUpperCase() : 'ACCOUNT'}
               </span>
               <ChevronDown
                 className={`hidden sm:inline-block h-3.5 w-3.5 text-gray-400 transition-transform duration-200 ${
@@ -264,16 +269,28 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
               >
                 <div className="px-3.5 py-3">
                   <p className="text-body-sm font-semibold text-text-primary truncate">
-                    {profile.personalInfo.fullName || 'CareerOs User'}
+                    {profile.personalInfo.fullName || 'CareerOS Candidate'}
                   </p>
                   <p className="text-caption text-text-muted truncate mt-0.5">
                     {profile.personalInfo.email ||
                       profile.rolePreferences.targetPrimaryTitle ||
-                      'Career Intelligence Profile'}
+                      'Local Protected Profile'}
                   </p>
                 </div>
 
                 <div className="py-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      navigate('/onboarding');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-body-sm text-text-secondary hover:text-text-primary hover:bg-surface-subtle text-left cursor-pointer transition-colors"
+                  >
+                    <Compass className="h-4 w-4 text-text-muted" />
+                    <span>Career Onboarding</span>
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
@@ -286,6 +303,19 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
                     <Settings className="h-4 w-4 text-text-muted" />
                     <span>Settings</span>
                   </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsAccountOpen(false);
+                      setAuthModalMode('switch');
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-body-sm text-text-secondary hover:text-text-primary hover:bg-surface-subtle text-left cursor-pointer transition-colors"
+                  >
+                    <Users className="h-4 w-4 text-text-muted" />
+                    <span>Switch Account</span>
+                  </button>
                 </div>
 
                 <div className="py-1">
@@ -294,6 +324,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
                     role="menuitem"
                     onClick={() => {
                       setIsAccountOpen(false);
+                      userContextService.logout();
                       window.location.reload();
                     }}
                     className="w-full flex items-center gap-2.5 px-3.5 py-2 text-body-sm text-error hover:bg-error-soft text-left cursor-pointer transition-colors"
@@ -554,6 +585,12 @@ export const TopBar: React.FC<TopBarProps> = ({ onOpenMobileMenu }) => {
           />
         </div>
       </Drawer>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authModalMode}
+      />
     </>
   );
 };

@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '@/core/profile';
 import {
-  mockJobCatalog,
   analyzeJobMatch,
   jobRepository,
   opportunityToJobPosting,
@@ -55,58 +54,12 @@ export const ApplicationsPage: React.FC = () => {
       ...jobRepository.getDatabaseOpportunities(),
       ...jobRepository.getActiveOpportunities(),
     ];
-    if (opps.length > 0) {
-      return opps.map(opportunityToJobPosting);
-    }
-    return mockJobCatalog;
+    return opps.map(opportunityToJobPosting);
   }, []);
 
-
-  // Seeded / Persisted Applications connected to profile and canonical applicationEngine
+  // Persisted Applications connected to canonical applicationEngine
   const [applications, setApplications] = useState<ApplicationItem[]>(() => {
-    const existing = applicationEngine.getApplicationsSync();
-    if (existing.length > 0) return existing;
-
-    const targetTitle = profile.rolePreferences?.targetPrimaryTitle || 'Lead Software Engineer';
-    const targetComp = profile.targetMarkets?.targetCompanies?.[0] || 'Stripe';
-    const secondComp = profile.targetMarkets?.targetCompanies?.[1] || 'Linear';
-
-    const defaultItems: ApplicationItem[] = [
-      {
-        id: 'app-1',
-        jobId: 'seed-app-1',
-        roleTitle: targetTitle,
-        company: targetComp,
-        location: `${profile.locationAndAuth?.currentCity || 'San Francisco'}, ${profile.locationAndAuth?.currentCountry || 'United States'} (Remote)`,
-        salary:
-          profile.compensation?.currency === 'INR' ? '₹45L - ₹55L' : '$175k - $210k',
-        stage: 'interviewing',
-        appliedDate: new Date(Date.now() - 86400000 * 14).toISOString().split('T')[0],
-        lastUpdated: 'Yesterday',
-        nextStep: 'System Design & Technical Architecture Deep-Dive (Thursday 2 PM)',
-        matchScore: 94,
-      },
-      {
-        id: 'app-2',
-        jobId: 'seed-app-2',
-        roleTitle: `Senior ${targetTitle.replace(/lead|staff|principal/gi, '').trim() || 'Software Engineer'}`,
-        company: secondComp,
-        location: 'Remote (Worldwide — Work From Anywhere)',
-        salary:
-          profile.compensation?.currency === 'INR' ? '₹40L - ₹50L' : '$160k - $195k',
-        stage: 'applied',
-        appliedDate: new Date(Date.now() - 86400000 * 4).toISOString().split('T')[0],
-        lastUpdated: '3 days ago',
-        nextStep: 'Recruiter screen scheduled with hiring lead',
-        matchScore: 91,
-      },
-    ];
-
-    defaultItems.forEach((item) => {
-      applicationEngine.createApplication(item);
-    });
-
-    return defaultItems;
+    return applicationEngine.getApplicationsSync();
   });
 
   // Subscribe to canonical applicationEngine updates

@@ -36,9 +36,6 @@ import { freshnessEngine } from '../src/core/jobs/engines/freshnessEngine';
 import {
   analyzeJobMatch,
   opportunityToJobPosting,
-  generateTailoredResume,
-  generateOutreachDraft,
-  generateInterviewBrief,
 } from '../src/core/intelligence';
 import { applicationEngine } from '../src/core/applications';
 import { documentEngine } from '../src/core/documents';

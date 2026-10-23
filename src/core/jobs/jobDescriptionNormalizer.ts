@@ -107,7 +107,7 @@ export function htmlToCleanText(html: string): string {
     .replace(/<\/(?:ul|ol)>/gi, '\n\n')
     // Paragraph and division breaks
     .replace(/<p[^>]*>(.*?)<\/p>/gi, '\n\n$1\n\n')
-    .replace(/<br\s*[\/]?>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<div[^>]*>/gi, '')
     // Bold and italics

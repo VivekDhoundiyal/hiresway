@@ -10,8 +10,8 @@ import {
   CareerGrowthGap,
   IntelligenceTierInfo,
 } from './types';
-import { mockJobCatalog } from './mockJobCatalog';
 import { JobOpportunity, TargetCompanyTag, RemoteType } from '../jobs/types';
+import { jobRepository } from '../jobs/jobRepository';
 import { behavioralLearningEngine } from '../jobs/behavioralLearning';
 import { targetCompaniesStore } from '../target-companies/targetCompanyStore';
 import { matchScoreCache } from './matchScoreCache';
@@ -1121,7 +1121,10 @@ export function classifyJobs(
   profile: UserProfile,
   customCatalog?: JobPosting[]
 ): (JobPosting & { match: JobMatchAnalysis })[] {
-  const catalog = customCatalog || mockJobCatalog;
+  const catalog =
+    customCatalog ||
+    jobRepository.getAllOpportunities().map(opportunityToJobPosting);
+  if (!catalog || catalog.length === 0) return [];
   return catalog
     .map((job) => ({
       ...job,
@@ -1590,5 +1593,56 @@ export function getIntelligenceTier(profile: UserProfile): IntelligenceTierInfo 
       'Specify your target role and seniority (+15%)',
       'Add top 5 technical skills (+20%)',
     ],
+  };
+}
+
+/**
+ * Creates a canonically typed JobPosting synthesized directly from the user's
+ * active career preferences when no external discovered jobs have been imported yet.
+ */
+export function createTargetJobFromProfile(
+  profile: UserProfile,
+  overrides?: Partial<JobPosting>
+): JobPosting {
+  const targetTitle =
+    profile.rolePreferences?.targetPrimaryTitle || 'Senior Software Engineer';
+  const targetComp =
+    profile.targetMarkets?.targetCompanies?.[0] || 'Target Employer';
+  const skills = profile.skills?.technicalSkills?.length
+    ? profile.skills.technicalSkills
+    : ['TypeScript', 'System Design', 'Cloud Architecture'];
+
+  return {
+    id: 'profile-target-role',
+    title: targetTitle,
+    company: targetComp,
+    location: `${profile.locationAndAuth?.currentCity || 'Remote'}, Worldwide`,
+    locationType: 'remote',
+    employmentType: 'full-time',
+    industry:
+      profile.targetMarkets?.targetIndustries?.[0] || 'Technology & Software',
+    seniority: 'senior',
+    minExperienceYears: profile.rolePreferences?.totalYearsExperience || 5,
+    salaryMin: profile.compensation?.targetBaseSalary
+      ? Math.round(profile.compensation.targetBaseSalary * 0.9)
+      : 150000,
+    salaryMax: profile.compensation?.targetBaseSalary
+      ? Math.round(profile.compensation.targetBaseSalary * 1.15)
+      : 200000,
+    currency: profile.compensation?.currency || 'USD',
+    requiredSkills: skills.slice(0, 5),
+    preferredTools: profile.skills?.toolsAndPlatforms || ['Git', 'Docker'],
+    responsibilities: [
+      'Architect, develop, and scale mission-critical systems and features',
+      'Collaborate across cross-functional product, design, and engineering teams',
+      'Drive engineering excellence, reliability, and automated testing',
+    ],
+    requirements: skills
+      .slice(0, 5)
+      .map((s) => `Demonstrated production expertise in ${s}`),
+    description: `Target opportunity for ${targetTitle} aligned with your canonical career profile preferences and technical competencies.`,
+    postedDate: new Date().toISOString(),
+    isTargetCompany: true,
+    ...overrides,
   };
 }

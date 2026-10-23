@@ -1780,7 +1780,7 @@ export const JobFeedPage: React.FC = () => {
                           <span className="text-gray-300">•</span>
                           <span>{job.salary.disclosed && job.salary.rawText ? `${job.salary.rawText} · Employer stated` : 'Salary not disclosed'}</span>
                           <span className="text-gray-300">•</span>
-                          {Boolean(job.isVerifiedLive && (job.verificationStatus === 'LIVE_VERIFIED' || job.verificationStatus === 'verified_live')) ? (
+                          {(job.isVerifiedLive && (job.verificationStatus === 'LIVE_VERIFIED' || job.verificationStatus === 'verified_live')) ? (
                             <span className="text-emerald-600 font-medium inline-flex items-center gap-1">
                               ✓ Verified Live
                             </span>

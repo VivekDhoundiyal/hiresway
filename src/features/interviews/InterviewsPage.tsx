@@ -3,11 +3,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProfile } from '@/core/profile';
 import {
   generateInterviewBrief,
-  mockJobCatalog,
   InterviewBrief,
   JobPosting,
   jobRepository,
   opportunityToJobPosting,
+  createTargetJobFromProfile,
 } from '@/core/intelligence';
 import { Card } from '@/components/card';
 import { Typography } from '@/components/typography';
@@ -39,22 +39,24 @@ export const InterviewsPage: React.FC = () => {
       ...jobRepository.getSavedOpportunities(),
       ...jobRepository.getActiveOpportunities(),
     ];
-    if (opps.length > 0) {
-      return opps.map(opportunityToJobPosting);
-    }
-    return mockJobCatalog;
+    return opps.map(opportunityToJobPosting);
   }, []);
 
+  const fallbackJob: JobPosting = useMemo(
+    () => createTargetJobFromProfile(profile),
+    [profile]
+  );
+
   const [selectedJobId, setSelectedJobId] = useState<string>(
-    queryJobId || (availableJobs.length > 0 ? availableJobs[0].id : '')
+    queryJobId || (availableJobs.length > 0 ? availableJobs[0].id : 'profile-target-role')
   );
 
   const [notes, setNotes] = useState<string>('');
   const [isSavedNotice, setIsSavedNotice] = useState(false);
 
   const selectedJob = useMemo(() => {
-    return availableJobs.find((j) => j.id === selectedJobId) || availableJobs[0];
-  }, [availableJobs, selectedJobId]);
+    return availableJobs.find((j) => j.id === selectedJobId) || availableJobs[0] || fallbackJob;
+  }, [availableJobs, selectedJobId, fallbackJob]);
 
   const brief: InterviewBrief = useMemo(() => {
     return generateInterviewBrief(profile, selectedJob);
