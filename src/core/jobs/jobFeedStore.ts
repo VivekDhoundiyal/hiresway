@@ -27,8 +27,8 @@ import { normalizeString } from './jobPipeline';
 import { persistentStorageEngine } from '../storage/persistentStorageEngine';
 
 const FEED_STORAGE_KEY = 'careeros_job_feed_v2';
-export const FEED_RETENTION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days active retention in Feed
-const VIEWED_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;  // 14 days active retention from viewing
+export const FEED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days active retention in Feed
+const VIEWED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;  // 7 days active retention from viewing
 
 function cleanCompanyName(company: string): string {
   return normalizeString(company || '')

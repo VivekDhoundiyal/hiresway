@@ -604,7 +604,7 @@ export class JobDiscoveryEngine {
                 // Compute transparent multi-factor relevance score
                 const matchAnalysis = jobMatchingEngine.getMatchAnalysis(job, profile);
                 const firstSeen = (job as any).firstSeenAt || (job as any).first_seen_at || job.dateDiscovered || nowIso;
-                const expiresAt = (job as any).expiresAt || (job as any).expires_at || new Date(new Date(firstSeen).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+                const expiresAt = (job as any).expiresAt || (job as any).expires_at || new Date(new Date(firstSeen).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
                 eligibleJobs.push({
                   ...job,

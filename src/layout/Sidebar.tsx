@@ -83,9 +83,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onItemClick })
               end={item.path === '/dashboard'}
               onClick={onItemClick}
               className={({ isActive }) => `
-                flex items-center rounded-xl text-body-sm transition-all duration-fast
+                flex items-center rounded-lg text-xs transition-all duration-fast
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
-                ${isCollapsed ? 'justify-center h-9 w-full px-0' : 'gap-2.5 px-3 py-1.5'}
+                ${isCollapsed ? 'justify-center h-8 w-full px-0' : 'gap-2 px-2.5 py-1.5'}
                 ${
                   isActive
                     ? 'bg-blue-50/90 text-blue-600 font-semibold border border-blue-200/60 shadow-3xs'
@@ -116,10 +116,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onItemClick })
       </nav>
 
       {/* Bottom Navigation Section & Collapsible Career Intelligence Card */}
-      <div className="p-2.5 border-t border-border/80 shrink-0 space-y-1.5 bg-surface">
+      <div className="p-2 border-t border-border/80 shrink-0 space-y-1 bg-surface">
         {!isCollapsed && (
-          <div className="px-3 pb-0.5">
-            <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+          <div className="px-2.5 pb-0.5">
+            <span className="text-[9.5px] font-bold uppercase text-slate-400 tracking-wider">
               ACCOUNT
             </span>
           </div>
@@ -134,9 +134,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onItemClick })
               end
               onClick={onItemClick}
               className={({ isActive }) => `
-                flex items-center rounded-xl text-body-sm transition-all duration-fast
+                flex items-center rounded-lg text-xs transition-all duration-fast
                 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary
-                ${isCollapsed ? 'justify-center h-9 w-full px-0' : 'gap-2.5 px-3 py-1.5'}
+                ${isCollapsed ? 'justify-center h-8 w-full px-0' : 'gap-2 px-2.5 py-1.5'}
                 ${
                   isActive
                     ? 'bg-blue-50/90 text-blue-600 font-semibold border border-blue-200/60 shadow-3xs'
@@ -167,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onItemClick })
 
         {/* Collapsible Career Intelligence Card */}
         {!isCollapsed && (
-          <div className="mt-2 p-2.5 rounded-xl bg-gradient-to-br from-cyan-50/70 via-blue-50/50 to-white border border-blue-100/80 shadow-xs relative overflow-hidden transition-all">
+          <div className="mt-1 p-2 rounded-lg bg-slate-50 border border-slate-200/70 shadow-3xs relative overflow-hidden transition-all">
             <button
               type="button"
               onClick={toggleCopilot}
@@ -175,9 +175,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onItemClick })
               title={isCopilotCollapsed ? 'Expand Career Intelligence' : 'Collapse Career Intelligence'}
             >
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="text-[11px] font-bold text-slate-900">Career Intelligence</span>
-                <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/60">Active</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="text-[11px] font-semibold text-slate-800">Career Intelligence</span>
+                <span className="text-[9.5px] text-emerald-600 font-medium bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200/50">Active</span>
               </div>
               <div className="text-slate-400 group-hover:text-slate-600 transition-colors">
                 {isCopilotCollapsed ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
@@ -185,32 +185,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '', onItemClick })
             </button>
 
             {!isCopilotCollapsed && (
-              <div className="mt-2 pt-2 border-t border-blue-100/60">
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span>Your career copilot is active</span>
-                </div>
-                <p className="text-[10.5px] text-slate-400 italic pt-0.5">
-                  &ldquo;Finding the right opportunities for you.&rdquo;
-                </p>
-
-                {/* Friendly 3D Copilot Mascot & Mini Analytics Graphic */}
-                <div className="flex justify-end items-end pt-1 -mb-1 -mr-1">
-                  <svg width="60" height="38" viewBox="0 0 72 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="6" y="24" width="6" height="18" rx="2" fill="#93C5FD" opacity="0.8" />
-                    <rect x="15" y="16" width="6" height="26" rx="2" fill="#60A5FA" opacity="0.9" />
-                    <rect x="24" y="8" width="6" height="34" rx="2" fill="#3B82F6" />
-                    <path d="M 6 22 L 15 14 L 24 6" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" />
-                    <circle cx="50" cy="22" r="16" fill="white" stroke="#E2E8F0" strokeWidth="1.5" />
-                    <rect x="42" y="15" width="16" height="9" rx="4.5" fill="#0F172A" />
-                    <circle cx="46" cy="19.5" r="2" fill="#38BDF8" />
-                    <circle cx="54" cy="19.5" r="2" fill="#38BDF8" />
-                    <circle cx="50" cy="5" r="2.5" fill="#10B981" />
-                    <path d="M 50 6 L 50 8" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" />
-                    <path d="M 33 22 C 33 20 34 19 35 19" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M 67 22 C 67 20 66 19 65 19" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </div>
+              <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 text-[10.5px] text-slate-500">
+                <p>Personalized intelligence matching active opportunities against your canonical career profile.</p>
               </div>
             )}
           </div>

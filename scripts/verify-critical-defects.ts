@@ -96,9 +96,9 @@ async function runTests() {
   );
 
   // -------------------------------------------------------------------------
-  // DEFECT 2: 14-Day Retention Policy
+  // DEFECT 2: 7-Day Retention Policy
   // -------------------------------------------------------------------------
-  console.log('\n--- 2. Testing 14-Day Retention Policy ---');
+  console.log('\n--- 2. Testing 7-Day Retention Policy ---');
 
   jobFeedStore.clearAll();
   const day0 = new Date('2026-10-01T10:00:00Z');
@@ -122,40 +122,40 @@ async function runTests() {
   const initialFirstSeen = ingestedItem?.job.first_seen_at || ingestedItem?.discovered_at;
   const initialExpiresAt = ingestedItem?.feed_expires_at;
 
-  // Verify expiration is exactly 14 days from first feed ingestion
-  const expectedExpiryTime = new Date(initialFirstSeen!).getTime() + 14 * 24 * 60 * 60 * 1000;
+  // Verify expiration is exactly 7 days from first feed ingestion
+  const expectedExpiryTime = new Date(initialFirstSeen!).getTime() + 7 * 24 * 60 * 60 * 1000;
   assert(
     Math.abs(new Date(initialExpiresAt!).getTime() - expectedExpiryTime) < 1000,
-    'feed_expires_at is exactly 14 days from first feed ingestion'
+    'feed_expires_at is exactly 7 days from first feed ingestion'
   );
 
-  // Test 2B: Refresh / duplicate discovery on Day 5 must NOT reset first_seen_at or feed_expires_at
-  const day5 = new Date('2026-10-06T10:00:00Z');
-  const duplicateOnDay5: JobOpportunity = {
+  // Test 2B: Refresh / duplicate discovery on Day 3 must NOT reset first_seen_at or feed_expires_at
+  const day3 = new Date('2026-10-04T10:00:00Z');
+  const duplicateOnDay3: JobOpportunity = {
     ...testJob,
-    dateDiscovered: day5.toISOString(),
-    last_seen_at: day5.toISOString(),
+    dateDiscovered: day3.toISOString(),
+    last_seen_at: day3.toISOString(),
   };
 
-  jobFeedStore.ingestDiscoveredBatch([duplicateOnDay5], true);
+  jobFeedStore.ingestDiscoveredBatch([duplicateOnDay3], true);
   const reingestedItem = jobFeedStore.getItemById(testJob.id);
 
   assert(
     reingestedItem?.job.first_seen_at === initialFirstSeen,
-    'Duplicate discovery on Day 5 did NOT reset first_seen_at'
+    'Duplicate discovery on Day 3 did NOT reset first_seen_at'
   );
   assert(
     reingestedItem?.feed_expires_at === initialExpiresAt,
-    'Duplicate discovery on Day 5 did NOT reset feed_expires_at'
+    'Duplicate discovery on Day 3 did NOT reset feed_expires_at'
   );
 
-  // Test 2C: Viewing a job does NOT shorten or delete before 14 days
+  // Test 2C: Viewing a job does NOT shorten or delete before 7 days
   jobFeedStore.markViewed(testJob.id);
   const viewedItem = jobFeedStore.getItemById(testJob.id);
   assert(Boolean(viewedItem?.job.is_viewed), 'Job marked viewed');
   assert(
     new Date(viewedItem!.feed_expires_at).getTime() >= expectedExpiryTime,
-    'Viewing job does NOT expire job earlier than 14-day ingestion window'
+    'Viewing job does NOT expire job earlier than 7-day ingestion window'
   );
 
   // Test 2D: User actions (Save, Apply, Dismiss) preserve record according to lifecycle
@@ -164,7 +164,7 @@ async function runTests() {
   assert(savedItem?.job.lifecycleState === 'SAVED', 'Saved job has SAVED lifecycleState');
   assert(Boolean(savedItem?.job.is_saved), 'Job marked is_saved');
 
-  // Test 2E: Dismiss and Undismiss (reopen) restores job without resetting 14-day expiration
+  // Test 2E: Dismiss and Undismiss (reopen) restores job without resetting 7-day expiration
   jobFeedStore.dismissJob(testJob.id, 'other');
   const dismissedItem = jobFeedStore.getItemById(testJob.id);
   assert(Boolean(dismissedItem?.dismissed_at), 'Dismissed job has dismissed_at set');
@@ -175,7 +175,7 @@ async function runTests() {
   assert(!undismissedItem?.dismissed_at, 'Undismissed job cleared dismissed_at');
   assert(
     undismissedItem?.feed_expires_at === initialExpiresAt,
-    'Undismissed job preserved original 14-day feed_expires_at'
+    'Undismissed job preserved original 7-day feed_expires_at'
   );
   assert(
     undismissedItem?.job.first_seen_at === initialFirstSeen,
@@ -184,17 +184,17 @@ async function runTests() {
 
   // Test 2F: Pruning unacted expired jobs
   const expiredJob: JobOpportunity = {
-    id: 'job-expired-20d',
+    id: 'job-expired-10d',
     title: 'Senior DevOps Engineer',
     company: 'Docker',
     location: 'Remote',
-    dateDiscovered: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    first_seen_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+    dateDiscovered: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    first_seen_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
     match_score: 90,
   };
   jobFeedStore.ingestDiscoveredBatch([expiredJob], true);
   const pruneResult = jobFeedStore.pruneExpiredJobs();
-  assert(pruneResult.expiredCount >= 1, 'Expired unacted job pruned after 14 days');
+  assert(pruneResult.expiredCount >= 1, 'Expired unacted job pruned after 7 days');
   // Saved job must NOT be pruned
   assert(Boolean(jobFeedStore.getItemById(testJob.id)), 'Saved job survives pruning');
 

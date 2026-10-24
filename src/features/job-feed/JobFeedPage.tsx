@@ -762,7 +762,7 @@ export const JobFeedPage: React.FC = () => {
   // Virtualizer for ultra-fast 3-column grid rendering without DOM bloating
   const rowVirtualizer = useVirtualizer({
     count: filteredOpportunities.length,
-    estimateSize: 280,
+    estimateSize: 220,
     overscan: 3,
     columns: gridColumns,
     containerRef: gridContainerRef,
@@ -991,8 +991,8 @@ export const JobFeedPage: React.FC = () => {
 
   return (
     <div className="space-y-3 pb-12 w-full animate-fadeIn min-w-0">
-      {/* 1. Header (Compact SaaS Layout: Title + Unified Statistics Strip + Actions) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
+      {/* 1. Compact Page Header (Title + Unobtrusive Secondary Actions + Primary Discover Action) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-2.5">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
             Job Feed
@@ -1002,95 +1002,28 @@ export const JobFeedPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Unified Compact Statistics Strip */}
-          <div className="bg-white border border-gray-200 rounded-xl px-2.5 py-1 flex items-center divide-x divide-gray-100 shadow-3xs">
-            <div
-              onClick={() => { setActiveSection('all'); resetFilters(); }}
-              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
-              title="Total authentic opportunities discovered across sources"
-            >
-              <div className="text-xs sm:text-sm font-bold text-gray-900 leading-tight">
-                {databaseTabCounts.all.toLocaleString()}
-              </div>
-              <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Discovered</div>
-            </div>
-
-            <div
-              onClick={() => { setActiveSection('all'); resetFilters(); }}
-              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
-              title="Qualified jobs matched to your career profile"
-            >
-              <div className="text-xs sm:text-sm font-bold text-blue-700 leading-tight">
-                {classifiedOpportunities.length.toLocaleString()}
-              </div>
-              <div className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Qualified</div>
-            </div>
-
-            <div
-              className="px-2 text-center"
-              title="Jobs currently matching your active filters"
-            >
-              <div className="text-xs sm:text-sm font-bold text-teal-700 leading-tight">
-                {filteredOpportunities.length.toLocaleString()}
-              </div>
-              <div className="text-[10px] font-semibold text-teal-600 uppercase tracking-wider">Displayed</div>
-            </div>
-
-            <div
-              onClick={() => setActiveSection('new')}
-              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
-              title="New unread opportunities today"
-            >
-              <div className="text-xs sm:text-sm font-bold text-emerald-700 leading-tight">
-                {databaseTabCounts.newCount.toLocaleString()}
-              </div>
-              <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">New Today</div>
-            </div>
-
-            <div
-              onClick={() => setActiveSection('high_priority')}
-              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
-              title="High Match opportunities (≥85% score)"
-            >
-              <div className="text-xs sm:text-sm font-bold text-amber-700 leading-tight">
-                {highMatchCount.toLocaleString()}
-              </div>
-              <div className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">High Match</div>
-            </div>
-
-            <div
-              onClick={() => setActiveSection('target_companies')}
-              className="px-2 text-center cursor-pointer hover:opacity-80 transition-opacity"
-              title="Opportunities at your target companies"
-            >
-              <div className="text-xs sm:text-sm font-bold text-purple-700 leading-tight">
-                {databaseTabCounts.targetCompanies.toLocaleString()}
-              </div>
-              <div className="text-[10px] font-semibold text-purple-600 uppercase tracking-wider">Targets</div>
-            </div>
-          </div>
-
-          {/* Action Buttons: Diagnostics, Import, Sources, Add Source, Discover Jobs */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Action Controls: Secondary Action Group + Primary Discover Action */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Unobtrusive Secondary Action Group */}
+          <div className="flex items-center gap-1 bg-white border border-gray-200/80 rounded-xl p-0.5 shadow-3xs">
             <button
               type="button"
               onClick={() => setIsDiagnosticsOpen(true)}
-              className="h-8 px-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+              className="h-7 px-2.5 rounded-lg hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
               title="System Diagnostics & Funnels"
             >
               <Activity className="h-3.5 w-3.5 text-blue-600" />
-              <span className="hidden xl:inline">Diagnostics</span>
+              <span className="hidden md:inline">Diagnostics</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsImportModalOpen(true)}
-              className="h-8 px-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+              className="h-7 px-2.5 rounded-lg hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Import Job by URL"
             >
               <Plus className="h-3.5 w-3.5 text-gray-500" />
-              <span className="hidden xl:inline">Import</span>
+              <span className="hidden md:inline">Import</span>
             </button>
 
             <button
@@ -1099,88 +1032,88 @@ export const JobFeedPage: React.FC = () => {
                 setSourceDrawerFilter('all');
                 setIsSourceRegistryOpen(true);
               }}
-              className="h-8 px-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+              className="h-7 px-2.5 rounded-lg hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Manage discovery sources"
             >
               <Globe2 className="h-3.5 w-3.5 text-gray-500" />
-              <span className="hidden xl:inline">Sources</span>
+              <span className="hidden md:inline">Sources</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsAddSourceModalOpen(true)}
-              className="h-8 px-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+              className="h-7 px-2.5 rounded-lg hover:bg-blue-50 text-blue-700 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Add new job source"
             >
               <Plus className="h-3.5 w-3.5 text-blue-600" />
               <span>Add Source</span>
             </button>
+          </div>
 
-            {/* Exactly 4 Discovery States: DISCOVER, DISCOVERING, PAUSED, ERROR */}
-            {(() => {
-              const currentState = isScanning
-                ? 'DISCOVERING'
-                : continuousDiscoveryState === 'PAUSED'
-                ? 'PAUSED'
-                : continuousDiscoveryState === 'ERROR' || discoveryError
-                ? 'ERROR'
-                : 'DISCOVER';
+          {/* Primary Action Button: Discover Jobs / Discovering State */}
+          {(() => {
+            const currentState = isScanning
+              ? 'DISCOVERING'
+              : continuousDiscoveryState === 'PAUSED'
+              ? 'PAUSED'
+              : continuousDiscoveryState === 'ERROR' || discoveryError
+              ? 'ERROR'
+              : 'DISCOVER';
 
-              if (currentState === 'DISCOVERING') {
-                return (
-                  <button
-                    type="button"
-                    onClick={pauseContinuousDiscovery}
-                    className="h-8 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer ring-2 ring-blue-300 ring-offset-1"
-                    title="Continuous discovery running. Click to pause."
-                  >
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    <span>Discovering...</span>
-                  </button>
-                );
-              }
-
-              if (currentState === 'PAUSED') {
-                return (
-                  <button
-                    type="button"
-                    onClick={() => resumeContinuousDiscovery()}
-                    className="h-8 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
-                    title="Continuous discovery paused. Click to resume."
-                  >
-                    <Pause className="h-3.5 w-3.5 text-amber-600 fill-amber-200" />
-                    <span>Paused</span>
-                  </button>
-                );
-              }
-
-              if (currentState === 'ERROR') {
-                return (
-                  <button
-                    type="button"
-                    onClick={() => resumeContinuousDiscovery()}
-                    className="h-8 px-3 rounded-xl bg-red-50 hover:bg-red-100 border border-red-300 text-red-800 text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
-                    title={continuousDiscoveryError || discoveryError || 'Discovery encountered an issue. Click to retry.'}
-                  >
-                    <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
-                    <span>Retry</span>
-                  </button>
-                );
-              }
-
+            if (currentState === 'DISCOVERING') {
               return (
                 <button
                   type="button"
-                  onClick={toggleContinuousDiscovery}
-                  className="h-8 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
-                  title="Start live continuous discovery across prioritized sources"
+                  onClick={pauseContinuousDiscovery}
+                  className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer ring-2 ring-blue-300 ring-offset-1"
+                  title="Continuous discovery running. Click to pause."
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>Discover Jobs</span>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  <span>Discovering...</span>
                 </button>
               );
-            })()}
-          </div>
+            }
+
+            if (currentState === 'PAUSED') {
+              return (
+                <button
+                  type="button"
+                  onClick={() => resumeContinuousDiscovery()}
+                  className="h-8 px-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+                  title="Continuous discovery paused. Click to resume."
+                >
+                  <Pause className="h-3.5 w-3.5 text-amber-600 fill-amber-200" />
+                  <span>Paused</span>
+                </button>
+              );
+            }
+
+            if (currentState === 'ERROR') {
+              return (
+                <button
+                  type="button"
+                  onClick={() => resumeContinuousDiscovery()}
+                  className="h-8 px-3.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-300 text-red-800 text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+                  title={continuousDiscoveryError || discoveryError || 'Discovery encountered an issue. Click to retry.'}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                  <span>Retry</span>
+                </button>
+              );
+            }
+
+            return (
+              <button
+                type="button"
+                onClick={toggleContinuousDiscovery}
+                className="h-8 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer"
+                title="Start live continuous discovery across prioritized sources"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Discover Jobs</span>
+              </button>
+            );
+          })()}
         </div>
       </div>
 
@@ -1400,12 +1333,13 @@ export const JobFeedPage: React.FC = () => {
             <div
               className="flex items-center gap-1.5 text-xs text-gray-500 cursor-help"
               title={
-                sourcesActuallyRan.length > 0
+                `Discovered: ${databaseTabCounts.all} | Qualified: ${classifiedOpportunities.length} | Displayed: ${filteredOpportunities.length}\n` +
+                (sourcesActuallyRan.length > 0
                   ? `Last attempt: ${lastAttemptAt ? lastAttemptAt.toLocaleString() : 'N/A'}\nLast success: ${lastSuccessAt ? lastSuccessAt.toLocaleString() : 'N/A'}\nSources executed (${sourcesActuallyRan.length}):\n${sourcesActuallyRan
                       .slice(0, 10)
                       .map((s: any) => `• ${s.sourceName || s.sourceId}: ${s.status} (${s.jobsDiscovered || 0} jobs)`)
                       .join('\n')}${sourcesActuallyRan.length > 10 ? '\n...and more' : ''}`
-                  : undefined
+                  : '')
               }
             >
               <Clock className="h-3.5 w-3.5 text-gray-400" />
